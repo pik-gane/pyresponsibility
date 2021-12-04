@@ -19,6 +19,7 @@ class Node (_AbstractObject):
     _a_branch = None
     @property
     def branch(self):
+        """the Branch starting at this node"""
         if self._a_branch is None:
             self._a_branch = trees.Branch(self)
         return self._a_branch
@@ -33,6 +34,14 @@ class Node (_AbstractObject):
             else:
                 self._a_history = self.predecessor.history + [self.predecessor]
         return self._a_history
+
+    _a_tree = None
+    @property
+    def tree(self):
+        """the whole Tree containing this node"""
+        if self._a_tree is None:
+            self._a_tree = trees.Tree((self.history + [self])[0])
+        return self._a_tree
 
 
 class InnerNode (Node):

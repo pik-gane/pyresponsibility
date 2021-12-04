@@ -291,3 +291,10 @@ class Branch (object):
             assert ins not in transitions, "scenario and strategy must not overlap"
             transitions[ins] = act
         return self._get_outcome_distribution(node=self.root_node, transitions=transitions)
+
+
+class Tree (Branch):
+    
+    def __init__(self, root_node):
+        assert root_node.predecessor is None
+        super(Tree, self).__init__(root_node)

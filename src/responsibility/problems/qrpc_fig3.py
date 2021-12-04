@@ -21,4 +21,4 @@ v2 = PrN("v2", pr={ w3: p, w4: 1 - p })
 
 r = DeN("r", pl=i, co={ a: v1, b: v2 })
 
-tree = r.branch
+tree = r.tree
