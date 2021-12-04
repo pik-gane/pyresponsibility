@@ -317,11 +317,11 @@ class Tree (Branch):
         assert root_node.predecessor is None
         super(Tree, self).__init__(root_node)
         
-    def make_globals(self, module_name="__main__"):
-        """In the named module (by default in the main module),
-        make a global variable for each player, action, outcome, node,
-        or information set whose name begins with a letter,
-        unless the global variable already exists."""
+    def make_globals(self):
+        """In the calling module, make a global variable for each 
+        player, action, outcome, node, or information set 
+        whose name begins with a letter, unless the global variable already exists."""
+        module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
         module = sys.modules[module_name]
         for n, v in {**self.nodes, **self.information_sets, **self.players, **self.actions, **self.outcomes}.items():
             if len(n)>0 and n[0].isalpha():

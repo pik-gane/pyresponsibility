@@ -20,5 +20,5 @@ T = Tree(
         })
     )
 
-T.make_globals(__name__)
+T.make_globals()
 
