@@ -2,7 +2,7 @@ import sys
 import itertools
 import sympy as sp
 
-from .core import update_consistently
+from .core import _AbstractObject, hasname
 from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes
@@ -15,44 +15,46 @@ TODO:
 """
 
 
-class Branch (object):
+class Branch (_AbstractObject):
     
-    _i_root_node = None
+    _i_root = None
     @property
-    def root_node(self): 
-        return self._i_root_node
-    
-    def __init__(self, root_node):
-        self._i_root_node = root_node
+    def root(self): 
+        return self._i_root
     
     # properties holding dicts of objects keyed by their name:
     
     _a_nodes = None
     @property
     def nodes(self):
+        """dict of named nodes keyed by name"""
         if self._a_nodes is None:
-            self._a_nodes = {self.root_node.name: self.root_node} 
-            if hasattr(self.root_node, 'successors'):
-                for v in self.root_node.successors:
+            self._a_nodes = {self.root.name: self.root} if hasname(self.root) else {} 
+            if hasattr(self.root, 'successors'):
+                for v in self.root.successors:
                     self._a_nodes.update(v.branch.nodes)
         return self._a_nodes
 
     _a_players = None
     @property
     def players(self):
+        """dict of named players keyed by name"""
         if self._a_players is None:
             self._a_players = {
                 v.player.name: v.player 
-                for v in self.nodes.values() if hasattr(v, "player")}
+                for v in self.nodes.values() 
+                if hasattr(v, "player") and hasname(v.player)}
         return self._a_players
     
     _a_outcomes = None
     @property
     def outcomes(self):
+        """dict of named outcomes keyed by name"""
         if self._a_outcomes is None:
             self._a_outcomes = {
                 v.outcome.name: v.outcome 
-                for v in self.nodes.values() if hasattr(v, "outcome")}
+                for v in self.nodes.values() 
+                if hasattr(v, "outcome") and hasname(v.outcome)}
         return self._a_outcomes
         
     _a_inner_nodes = None
@@ -94,10 +96,12 @@ class Branch (object):
     _a_information_sets = None
     @property
     def information_sets(self):
+        """dict of named information_sets keyed by name"""
         if self._a_information_sets is None:
             self._a_information_sets = {
                 v.information_set.name: v.information_set
-                for v in self.decision_nodes.values()} 
+                for v in self.decision_nodes.values()
+                if hasname(v.information_set)} 
         return self._a_information_sets
 
     _a_leaf_nodes = None
@@ -132,8 +136,9 @@ class Branch (object):
     def get_information_sets(self, player):
         if player not in self._a_information_sets_d:
             self._a_information_sets_d[player] = {
-                v.information_set.name: v.information_set
-                for v in self.get_decision_nodes(player).values()} 
+                ins.name: ins
+                for ins in self.information_sets.values()
+                if ins.player == player} 
         return self._a_information_sets_d[player]
 
     _a_actions = None
@@ -308,14 +313,19 @@ class Branch (object):
         for ins, act in strategy.choices.items():
             assert ins not in transitions, "scenario and strategy must not overlap"
             transitions[ins] = act
-        return self._get_outcome_distribution(node=self.root_node, transitions=transitions)
+        return self._get_outcome_distribution(node=self.root, transitions=transitions)
+
+    def __repr__(self):
+        if len(self.name) > 0 and self.name[0].isalpha():
+            return "{ " + self.name + ": " + self.root._to_repr(as_branch=True) + " }"
+        else:
+            return self.root._to_repr(as_branch=True)
 
 
 class Tree (Branch):
     
-    def __init__(self, root_node):
-        assert root_node.predecessor is None
-        super(Tree, self).__init__(root_node)
+    def validate(self):
+        assert self.root.predecessor is None
         
     def make_globals(self):
         """In the calling module, make a global variable for each 
@@ -323,8 +333,12 @@ class Tree (Branch):
         whose name begins with a letter, unless the global variable already exists."""
         module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
         module = sys.modules[module_name]
-        for n, v in {**self.nodes, **self.information_sets, **self.players, **self.actions, **self.outcomes}.items():
-            if len(n)>0 and n[0].isalpha():
+        for n, v in {**self.nodes, 
+                     **self.information_sets, 
+                     **self.players, 
+                     **self.actions, 
+                     **self.outcomes}.items():
+            if hasname(v):
                 if getattr(module, n, v) != v:
                     print("Warning: global var", n, "existed, did not overwrite it.")
                 else:

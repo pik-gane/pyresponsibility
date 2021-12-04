@@ -12,6 +12,7 @@ abbreviations = {
     "co": "consequences",
     "pl": "player",
     "pr": "probabilities",
+    "ro": "root",
     "su": "successors",
     "ou": "outcome",
     "tr": "transitions",
@@ -54,6 +55,10 @@ class _AbstractObject (object):
 
 
 # helper functions:
+    
+def hasname(ob):
+    return hasattr(ob, "name") and isinstance(ob.name, str) and len(ob.name)>0 and ob.name[0].isalpha()
+    
 def update_consistently(base, other):
     """updates dict base with dict until a conflict is found.
     returns whether a conflict was found.""" 

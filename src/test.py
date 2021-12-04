@@ -1,6 +1,8 @@
 from responsibility import *
 from responsibility.problems.qrpc_fig3 import T
 
+print(repr(T))
+
 T.make_globals()
 
 print(T.nodes)

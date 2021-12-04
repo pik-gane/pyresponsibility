@@ -1,9 +1,12 @@
-from .core import _AbstractObject
+from .core import _AbstractObject, hasname
 
 
 class Player (_AbstractObject):
 
     _c_symbols = ["i", "j"]
+
+    def __repr__(self):
+        return self.name if hasname(self) else "~"
 
 Pl = Player
     
@@ -25,6 +28,10 @@ class Group (_AbstractObject):
             
     def __contains__(self, player):
         return player in self.players
+        
+    def __repr__(self):
+        return self.name if hasname(self) else "{*}"
+        
 
 Gr = Group
 

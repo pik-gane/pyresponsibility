@@ -1,6 +1,6 @@
 import sympy as sp
 
-from .core import _AbstractObject
+from .core import _AbstractObject, hasname
 
 from .actions import Action
 from .outcomes import Outcome
@@ -23,7 +23,7 @@ class Node (_AbstractObject):
     def branch(self):
         """the Branch starting at this node"""
         if self._a_branch is None:
-            self._a_branch = trees.Branch(self)
+            self._a_branch = trees.Branch("_br_" + self.name, root=self)
         return self._a_branch
 
     _a_history = None
@@ -45,6 +45,12 @@ class Node (_AbstractObject):
             self._a_tree = trees.Tree((self.history + [self])[0])
         return self._a_tree
 
+    def __repr__(self):
+        return self._to_repr(as_branch=False)
+
+    def _to_repr(self, as_branch):
+        return self.name if hasname(self) else "°"
+
 
 class InnerNode (Node):
 
@@ -59,6 +65,17 @@ class InnerNode (Node):
         for node in self._i_successors:
             assert node._a_predecessor is None, "node can only have one predecessor"
             node._a_predecessor = self
+
+    def _to_repr(self, as_branch):
+        if as_branch:
+            successor_list = ("[ " 
+                + ", ".join([v._to_repr(True) for v in self.successors]) 
+                + " ]")
+            return ("{ " + self.name + ": " + successor_list + " }" if hasname(self)
+                    else successor_list)
+        else:
+            return super(InnerNode, self)._to_repr(False) + "-"
+
 
 class LeafNode (Node):
     pass
@@ -94,6 +111,18 @@ class ProbabilityNode (InnerNode):
         if isinstance(total_p, sp.Expr):
             total_p = sp.simplify(total_p)
         assert total_p == 1, "sum of probability values must be 1" 
+
+    def _to_repr(self, as_branch):
+        if as_branch:
+            successor_list = ("{ " 
+                + ", ".join([v._to_repr(True) + ": " + str(p) 
+                             for v, p in self.probabilities.items()]) 
+                + " }")
+            return ("{ " + self.name + ": " + successor_list + " }" if hasname(self)
+                    else successor_list)
+        else:
+            return super(ProbabilityNode, self)._to_repr(False)
+            
 
 PrN = ProbabilityNode
 
@@ -138,6 +167,17 @@ class DecisionNode (InnerNode):
             InformationSet("_ins_" + self.name, nodes={self})
         return self._a_information_set
 
+    def _to_repr(self, as_branch):
+        token = Node._to_repr(self, False) + "(" + repr(self.player) + ")"
+        if as_branch:
+            successor_list = ("{ " 
+                + ", ".join([repr(a) + ": " + v._to_repr(True) 
+                             for a, v in self.consequences.items()]) 
+                + " }")
+            return "{ " + token + ": " + successor_list + " }"
+        else:
+            return token + "-"
+            
 DeN = DecisionNode
 
 
@@ -152,6 +192,9 @@ class OutcomeNode (LeafNode):
 
     def validate(self):
         assert isinstance(self.outcome, Outcome)
+
+    def _to_repr(self, as_branch):
+        return Node._to_repr(self, False) + "(" + repr(self.outcome) + ")"
 
 OuN = OutcomeNode
 
