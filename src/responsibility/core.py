@@ -52,38 +52,17 @@ class _AbstractObject (object):
     def __str__(self): return self._i_name
     def __repr__(self): return self._i_name
 
+
+# helper functions:
+def update_consistently(base, other):
+    """updates dict base with dict until a conflict is found.
+    returns whether a conflict was found.""" 
+    for key, value in other.items():
+        if key not in base:
+            base[key] = value
+        elif base[key] != value: 
+            # attempted update is inconsistent with content
+            return False
+    return True    
     
-
-
-    
-
-
-
-    
-
-        
-
-class Function (_AbstractObject):
-    _i_function = None
-    def __init__(self, function):
-        assert hasattr(function, "__call__"), "must supply a function"
-        self._i_function = function
-
-class AggregationFunction (Function):
-    def __call__(self, values):
-        """values: iterable of numbers"""
-        return self._i_function(values)
-        
-class ResponsibilityFunction (_AbstractObject):
-    def __call__(self, tree=None, group=None, node=None):
-        return self._i_function(tree=None, group=None, node=None)
-        
-class PointwiseBackwardResponsibilityFunction (ResponsibilityFunction):
-    pass
-
-class AggregateBackwardResponsibilityFunction (ResponsibilityFunction):
-    pass
-    
-class ForwardResponsibilityFunction (ResponsibilityFunction):
-    pass
 

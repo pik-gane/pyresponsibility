@@ -1,10 +1,10 @@
 import itertools
 import sympy as sp
 
+from .core import update_consistently
 from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes
-
 
 class Branch (object):
     
@@ -16,22 +16,8 @@ class Branch (object):
     def __init__(self, root_node):
         self._i_root_node = root_node
     
-    _a_players = None
-    @property
-    def players(self):
-        if self._a_players is None:
-            self._a_players = {v.player 
-                for v in self.nodes if hasattr(v, "player")}
-        return self._a_players
+    # properties holding dicts of objects keyed by their name:
     
-    _a_outcomes = None
-    @property
-    def outcomes(self):
-        if self._a_outcomes is None:
-            self._a_outcomes = {v.outcome 
-                for v in self.nodes if hasattr(v, "outcome")}
-        return self._a_outcomes
-        
     _a_nodes = None
     @property
     def nodes(self):
@@ -42,59 +28,83 @@ class Branch (object):
                     self._a_nodes.update(v.branch.nodes)
         return self._a_nodes
 
+    _a_players = None
+    @property
+    def players(self):
+        if self._a_players is None:
+            self._a_players = {
+                v.player.name: v.player 
+                for v in self.nodes.values() if hasattr(v, "player")}
+        return self._a_players
+    
+    _a_outcomes = None
+    @property
+    def outcomes(self):
+        if self._a_outcomes is None:
+            self._a_outcomes = {
+                v.outcome.name: v.outcome 
+                for v in self.nodes.values() if hasattr(v, "outcome")}
+        return self._a_outcomes
+        
     _a_inner_nodes = None
     @property
     def inner_nodes(self):
         if self._a_inner_nodes is None:
-            self._a_inner_nodes = {v
-                for v in self.nodes if isinstance(v, nodes.InnerNode)} 
+            self._a_inner_nodes = {n: v
+                for n, v in self.nodes.items() 
+                if isinstance(v, nodes.InnerNode)} 
         return self._a_inner_nodes
         
     _a_possibility_nodes = None
     @property
     def possibility_nodes(self):
         if self._a_possibility_nodes is None:
-            self._a_possibility_nodes = {v
-                for v in self.nodes if isinstance(v, nodes.PossibilityNode)} 
+            self._a_possibility_nodes = {n: v
+                for n, v in self.nodes.items() 
+                if isinstance(v, nodes.PossibilityNode)} 
         return self._a_possibility_nodes
         
     _a_probability_nodes = None
     @property
     def probability_nodes(self): 
         if self._a_probability_nodes is None:
-            self._a_probability_nodes = {v
-                for v in self.nodes if isinstance(v, nodes.ProbabilityNode)} 
+            self._a_probability_nodes = {n: v
+                for n, v in self.nodes.items() 
+                if isinstance(v, nodes.ProbabilityNode)} 
         return self._a_probability_nodes
 
     _a_decision_nodes = None
     @property
     def decision_nodes(self): 
         if self._a_decision_nodes is None:
-            self._a_decision_nodes = {v
-                for v in self.nodes if isinstance(v, nodes.DecisionNode)} 
+            self._a_decision_nodes = {n: v
+                for n, v in self.nodes.items() 
+                if isinstance(v, nodes.DecisionNode)} 
         return self._a_decision_nodes
 
     _a_leaf_nodes = None
     @property
     def leaf_nodes(self):
         if self._a_leaf_nodes is None:
-            self._a_leaf_nodes = {v
-                for v in self.nodes if isinstance(v, nodes.LeafNode)} 
+            self._a_leaf_nodes = {n: v
+                for n, v in self.nodes.items() 
+                if isinstance(v, nodes.LeafNode)} 
         return self._a_leaf_nodes
         
     _a_outcome_nodes = None
     @property
     def outcome_nodes(self): 
         if self._a_outcome_nodes is None:
-            self._a_outcome_nodes = {v
-                for v in self.nodes if isinstance(v, nodes.OutcomeNode)} 
+            self._a_outcome_nodes = {n: v
+                for n, v in self.nodes.items() 
+                if isinstance(v, nodes.OutcomeNode)} 
         return self._a_outcome_nodes
 
     _a_decision_nodes_d = {}
     def get_decision_nodes(self, player_or_group):
         if player_or_group not in self._a_decision_nodes_d:
-            self._a_decision_nodes_d[player_or_group] = {v
-                for v in self.decision_nodes 
+            self._a_decision_nodes_d[player_or_group] = {n: v
+                for n, v in self.decision_nodes.items() 
                 if v.player == player_or_group 
                 or (isinstance(player_or_group, Group) 
                     and v.player in player_or_group)} 
@@ -104,18 +114,20 @@ class Branch (object):
     def get_information_sets(self, player):
         if player not in self._a_information_sets_d:
             self._a_information_sets_d[player] = {
-                v.information_set
-                for v in self.decision_nodes(player)} 
+                v.information_set.name: v.information_set
+                for v in self.get_decision_nodes(player).values()} 
         return self._a_information_sets_d[player]
 
     _a_actions = None
     @property
     def actions(self):
         if self._a_actions is None:
-            self._a_actions = {a
-                for v in self.nodes if hasattr(v, "actions")
+            self._a_actions = {a.name: a
+                for v in self.nodes.values() if hasattr(v, "actions")
                 for a in v.actions}
-        return self._a_actions   
+        return self._a_actions
+        
+    # generators for solutions:
     
     def _get_transitions(self, node=None, include_types=None, exclude_types=None, 
                          include_group=None, exclude_group=None, consistently=None):
@@ -157,7 +169,7 @@ class Branch (object):
                 is_ok = True
                 for component in combination:
                     if consistently: 
-                        is_ok = is_ok and self._update_consistently(transitions, component)
+                        is_ok = is_ok and update_consistently(transitions, component)
                         if not is_ok: break
                     else:
                         transitions.update(component)
@@ -224,7 +236,7 @@ class Branch (object):
                 choices = {}
                 is_consistent = True
                 for component in combination:
-                    is_consistent = is_consistent and self._update_consistently(choices, component)
+                    is_consistent = is_consistent and update_consistently(choices, component)
                     if not is_consistent: break
                 if is_consistent: yield choices
         elif isinstance(node, nodes.LeafNode):
@@ -249,18 +261,11 @@ class Branch (object):
             choices = {}
             is_consistent = True
             for component in combination:
-                is_consistent = is_consistent and self._update_consistently(choices, component)
+                is_consistent = is_consistent and update_consistently(choices, component)
                 if not is_consistent: break
             if is_consistent: yield Strategy("_", anchor=node, choices=choices)
         
-    def _update_consistently(self, base, other):
-        for key, value in other.items():
-            if key not in base:
-                base[key] = value
-            elif base[key] != value: 
-                # attempted update is inconsistent with content
-                return False
-        return True    
+    # outcome distributions:
         
     def _get_outcome_distribution(self, node=None, transitions=None):
         if isinstance(node, nodes.OutcomeNode):
