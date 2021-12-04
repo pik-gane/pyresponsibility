@@ -1,3 +1,5 @@
+import sympy as sp
+
 from .core import _AbstractObject
 
 from .actions import Action
@@ -85,8 +87,13 @@ class ProbabilityNode (InnerNode):
     def validate(self):
         assert isinstance(self.probabilities, dict)
         self._i_successors = set(self.probabilities.keys())
+        total_p = 0
         for node, p in self.probabilities.items():
             assert isinstance(node, Node)
+            total_p += p
+        if isinstance(total_p, sp.Expr):
+            total_p = sp.simplify(total_p)
+        assert total_p == 1, "sum of probability values must be 1" 
 
 PrN = ProbabilityNode
 
@@ -128,7 +135,7 @@ class DecisionNode (InnerNode):
     @property
     def information_set(self):
         if self._a_information_set is None:
-            InformationSet(self.name, nodes={self})
+            InformationSet("_ins_" + self.name, nodes={self})
         return self._a_information_set
 
 DeN = DecisionNode

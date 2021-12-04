@@ -39,7 +39,7 @@ class _AbstractObject (object):
         return self._i_desc
     
     def __init__(self, name, **kwargs):
-        assert len(name) > 0
+        assert isinstance(name, str)
         self._i_name = name
         for attr, value in kwargs.items():
             if attr in abbreviations: attr = abbreviations[attr]

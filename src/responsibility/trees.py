@@ -1,3 +1,4 @@
+import sys
 import itertools
 import sympy as sp
 
@@ -5,6 +6,14 @@ from .core import update_consistently
 from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes
+
+
+"""
+TODO:
+- export to graphviz and networkx, rendering
+
+"""
+
 
 class Branch (object):
     
@@ -81,6 +90,15 @@ class Branch (object):
                 for n, v in self.nodes.items() 
                 if isinstance(v, nodes.DecisionNode)} 
         return self._a_decision_nodes
+
+    _a_information_sets = None
+    @property
+    def information_sets(self):
+        if self._a_information_sets is None:
+            self._a_information_sets = {
+                v.information_set.name: v.information_set
+                for v in self.decision_nodes.values()} 
+        return self._a_information_sets
 
     _a_leaf_nodes = None
     @property
@@ -298,3 +316,16 @@ class Tree (Branch):
     def __init__(self, root_node):
         assert root_node.predecessor is None
         super(Tree, self).__init__(root_node)
+        
+    def make_globals(self, module_name="__main__"):
+        """In the named module (by default in the main module),
+        make a global variable for each player, action, outcome, node,
+        or information set whose name begins with a letter,
+        unless the global variable already exists."""
+        module = sys.modules[module_name]
+        for n, v in {**self.nodes, **self.information_sets, **self.players, **self.actions, **self.outcomes}.items():
+            if len(n)>0 and n[0].isalpha():
+                if getattr(module, n, v) != v:
+                    print("Warning: global var", n, "existed, did not overwrite it.")
+                else:
+                    setattr(module, n, v)
