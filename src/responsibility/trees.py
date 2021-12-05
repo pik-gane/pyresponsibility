@@ -6,7 +6,7 @@ try:
 except:
     print("Branch.draw() unavailable since graphviz python package is not available")
 
-from .core import _AbstractObject, hasname, update_consistently
+from .core import _AbstractObject, hasname, update_consistently, profile
 from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes as nd
@@ -304,7 +304,7 @@ class Branch (_AbstractObject):
             if is_consistent: yield Strategy("_", anchor=node, choices=choices)
         
     # outcome distributions:
-        
+    #@profile
     def _get_outcome_distribution(self, node=None, transitions=None):
         """helper function"""
         if isinstance(node, nd.OutcomeNode):
@@ -322,6 +322,7 @@ class Branch (_AbstractObject):
                     distribution[outcome] = p
             return distribution
             
+    #@profile
     def get_outcome_distribution(self, scenario=None, strategy=None):
         """Returns the probability of outcomes resulting from a given
         scenario and strategy.

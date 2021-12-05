@@ -2,6 +2,8 @@ import sys
 import itertools 
 import numpy as np
 import sympy as sp
+from line_profiler import LineProfiler
+profile = LineProfiler()
 
 # _c_...: class attr must be set at class def
 # _i_...: must be set at init
