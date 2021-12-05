@@ -15,7 +15,7 @@ T = Tree("qrpc_fig3",
             }), 
             Ac("b"): PrN("v2", pr={ 
                 OuN("w3", ou=bad): p, 
-                OuN("", ou=good): 1 - p, 
+                OuN("w4", ou=good): 1 - p, 
             }),
         })
     )

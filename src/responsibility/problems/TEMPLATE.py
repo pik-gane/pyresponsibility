@@ -6,16 +6,19 @@ from sympy import symbols
 """
  = symbols("")
 
- = Pl("")
- = Ac("")
+T = Tree("", ro=)
 
- = Ou("", ac=)
+= Pl("")
+= Ac("")
 
- = OuN("", ou=)
+ = Ou("", ac=True)
+ = Ou("", ac=False)
 
- = PoN("", su={ })
- = PrN("", pr={ : })
- = DeN("", pl=, co={ : })
+OuN("", ou=)
 
-T = r.tree
+PoN("", su={ })
+PrN("", pr={ : })
+DeN("", pl=, co={ : })
+
+T.make_globals()
 """

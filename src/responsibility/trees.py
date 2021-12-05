@@ -1,8 +1,12 @@
 import sys
 import itertools
 import sympy as sp
+try:
+    import graphviz as gv
+except:
+    print("Branch.draw() unavailable since graphviz python package is not available")
 
-from .core import _AbstractObject, hasname
+from .core import _AbstractObject, hasname, update_consistently
 from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes
@@ -154,6 +158,7 @@ class Branch (_AbstractObject):
     
     def _get_transitions(self, node=None, include_types=None, exclude_types=None, 
                          include_group=None, exclude_group=None, consistently=None):
+        """helper function"""
         if (( # type is selected:
              (include_types is not None and isinstance(node, include_types)) 
              or (exclude_types is not None and not isinstance(node, exclude_types))
@@ -203,6 +208,7 @@ class Branch (_AbstractObject):
     
     def get_partial_solutions(self, node=None, include_types=None, exclude_types=None, 
                               include_group=None, exclude_group=None, consistently=None):
+        """helper function"""
         assert isinstance(node, nodes.Node)
         if include_types is not None:
             assert exclude_types is None, "either specify include_types or exclude_types"
@@ -226,6 +232,10 @@ class Branch (_AbstractObject):
             yield PartialSolution("_", transitions=transitions)
         
     def get_scenarios(self, node=None, player=None, group=None):
+        """Return all scenarios for the given player or group starting at the given node.
+        If node is a DecisionNode, it must belong to that player or group.
+        @return: generator for Scenario objects   
+        """
         if player:
             assert group is None
             group = Group("_", players={player})
@@ -243,6 +253,7 @@ class Branch (_AbstractObject):
                 yield Scenario("_", anchor=v, transitions=transitions)
     
     def _get_choices(self, node=None, group=None):
+        """helper function"""
         if isinstance(node, nodes.DecisionNode) and node.player in group:
             # yield from concatenation of partial strategies at all successors,
             # each one enriched by the corresponding choice:
@@ -266,6 +277,10 @@ class Branch (_AbstractObject):
             yield {}
         
     def get_strategies(self, node=None, player=None, group=None):
+        """Return all strategies for the given player or group starting at the given node.
+        If node is a DecisionNode, it must belong to that player or group.
+        @return: generator for Strategy objects   
+        """
         assert isinstance(node, nodes.Node)
         if player:
             assert group is None
@@ -291,6 +306,7 @@ class Branch (_AbstractObject):
     # outcome distributions:
         
     def _get_outcome_distribution(self, node=None, transitions=None):
+        """helper function"""
         if isinstance(node, nodes.OutcomeNode):
             return {node.outcome: 1}
         elif not isinstance(node, nodes.ProbabilityNode):
@@ -307,6 +323,10 @@ class Branch (_AbstractObject):
             return distribution
             
     def get_outcome_distribution(self, scenario=None, strategy=None):
+        """Returns the probability of outcomes resulting from a given
+        scenario and strategy.
+        @return: dict of probability keyed by Outcome
+        """
         assert isinstance(scenario, Scenario)
         assert isinstance(strategy, Strategy)
         transitions = scenario.transitions
@@ -316,11 +336,22 @@ class Branch (_AbstractObject):
         return self._get_outcome_distribution(node=self.root, transitions=transitions)
 
     def __repr__(self):
-        if len(self.name) > 0 and self.name[0].isalpha():
-            return "{ " + self.name + ": " + self.root._to_repr(as_branch=True) + " }"
-        else:
-            return self.root._to_repr(as_branch=True)
+        """Returns a multi-line half-graphical representation of the tree.
+        Each node is one line, connected by lines indicating successor relationships.
+        Actions and probabilities are named right before the node they lead to.
+        Non-singleton information sets are named in parentheses after node names.
+        Players of decision nodes and outcomes of outcome nodes are named after a colon after node names.
+        Acceptable outcomes are marked by a check mark, inacceptable ones by a cross.
+        Unnamed nodes are represented by a bullet. 
+        @return: str (multiline)
+        """
+        return self.name + ":" + self.root._to_lines("", "")
 
+    def draw(self, filename, show=False):
+        """Draw the tree using graphviz and potentially show it"""
+        dot = gv.Digraph(comment=self.name, graph_attr={"rankdir": "LR"})
+        self.root._add_to_dot(dot)
+        dot.render(outfile=filename, view=show)
 
 class Tree (Branch):
     

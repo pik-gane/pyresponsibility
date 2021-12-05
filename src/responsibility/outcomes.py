@@ -1,4 +1,4 @@
-from .core import _AbstractObject
+from .core import _AbstractObject, hasname
 
 
 class Outcome (_AbstractObject):
@@ -13,6 +13,9 @@ class Outcome (_AbstractObject):
 
     def validate(self):
         assert isinstance(self.is_acceptable, bool)
+
+    def __repr__(self):
+        return (self.name + " " if hasname(self) else "") + ("✔" if self.is_acceptable else "✖")
 
 Ou = Outcome
 

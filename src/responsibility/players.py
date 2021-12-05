@@ -1,3 +1,5 @@
+import sys
+
 from .core import _AbstractObject, hasname
 
 
@@ -35,3 +37,18 @@ class Group (_AbstractObject):
 
 Gr = Group
 
+def players(*names):
+    """Return a Player for each name listed as an argument"""
+    return (Player(name) for name in names)
+    
+def global_players(*names):
+    """Create a Player for each name listed as an argument 
+    and store it in a global variable of the same name"""
+    module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
+    module = sys.modules[module_name]
+    for pl in players(*names):
+        n = pl.name
+        if getattr(module, n, pl) != pl:
+            print("Warning: global var", n, "existed, did not overwrite it.")
+        else:
+            setattr(module, n, pl)
