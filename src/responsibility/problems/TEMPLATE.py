@@ -8,7 +8,10 @@ from sympy import symbols
 
 T = Tree("", ro=)
 
+global_players("")
 = Pl("")
+
+global_actions("")
 = Ac("")
 
  = Ou("", ac=True)

@@ -1,3 +1,4 @@
+import sys
 import itertools 
 import numpy as np
 import sympy as sp
@@ -73,4 +74,15 @@ def update_consistently(base, other):
             return False
     return True    
     
-
+def global_symbols(*names):
+    """Create a sympy symbol for each name listed as an argument 
+    and store it in a global variable of the same name"""
+    module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
+    module = sys.modules[module_name]
+    sy = sp.symbols(",".join([*names]))
+    for s in sy if isinstance(sy, tuple) else [sy]:
+        n = s.name
+        if getattr(module, n, s) != s:
+            print("Warning: global var", n, "existed, did not overwrite it.")
+        else:
+            setattr(module, n, s)

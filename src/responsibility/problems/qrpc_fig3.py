@@ -2,7 +2,7 @@ from ..__init__ import *
 
 from sympy import symbols
 
-p = symbols("p")
+global_symbols("p")
 
 good = Ou("good", ac=True)
 bad = Ou("bad", ac=False)
