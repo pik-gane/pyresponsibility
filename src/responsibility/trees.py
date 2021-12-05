@@ -9,7 +9,7 @@ except:
 from .core import _AbstractObject, hasname, update_consistently
 from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
-from . import nodes
+from . import nodes as nd
 
 
 """
@@ -67,7 +67,7 @@ class Branch (_AbstractObject):
         if self._a_inner_nodes is None:
             self._a_inner_nodes = {n: v
                 for n, v in self.nodes.items() 
-                if isinstance(v, nodes.InnerNode)} 
+                if isinstance(v, nd.InnerNode)} 
         return self._a_inner_nodes
         
     _a_possibility_nodes = None
@@ -76,7 +76,7 @@ class Branch (_AbstractObject):
         if self._a_possibility_nodes is None:
             self._a_possibility_nodes = {n: v
                 for n, v in self.nodes.items() 
-                if isinstance(v, nodes.PossibilityNode)} 
+                if isinstance(v, nd.PossibilityNode)} 
         return self._a_possibility_nodes
         
     _a_probability_nodes = None
@@ -85,7 +85,7 @@ class Branch (_AbstractObject):
         if self._a_probability_nodes is None:
             self._a_probability_nodes = {n: v
                 for n, v in self.nodes.items() 
-                if isinstance(v, nodes.ProbabilityNode)} 
+                if isinstance(v, nd.ProbabilityNode)} 
         return self._a_probability_nodes
 
     _a_decision_nodes = None
@@ -94,7 +94,7 @@ class Branch (_AbstractObject):
         if self._a_decision_nodes is None:
             self._a_decision_nodes = {n: v
                 for n, v in self.nodes.items() 
-                if isinstance(v, nodes.DecisionNode)} 
+                if isinstance(v, nd.DecisionNode)} 
         return self._a_decision_nodes
 
     _a_information_sets = None
@@ -114,7 +114,7 @@ class Branch (_AbstractObject):
         if self._a_leaf_nodes is None:
             self._a_leaf_nodes = {n: v
                 for n, v in self.nodes.items() 
-                if isinstance(v, nodes.LeafNode)} 
+                if isinstance(v, nd.LeafNode)} 
         return self._a_leaf_nodes
         
     _a_outcome_nodes = None
@@ -123,7 +123,7 @@ class Branch (_AbstractObject):
         if self._a_outcome_nodes is None:
             self._a_outcome_nodes = {n: v
                 for n, v in self.nodes.items() 
-                if isinstance(v, nodes.OutcomeNode)} 
+                if isinstance(v, nd.OutcomeNode)} 
         return self._a_outcome_nodes
 
     _a_decision_nodes_d = {}
@@ -140,9 +140,9 @@ class Branch (_AbstractObject):
     def get_information_sets(self, player):
         if player not in self._a_information_sets_d:
             self._a_information_sets_d[player] = {
-                ins.name: ins
-                for ins in self.information_sets.values()
-                if ins.player == player} 
+                S.name: S
+                for S in self.information_sets.values()
+                if S.player == player} 
         return self._a_information_sets_d[player]
 
     _a_actions = None
@@ -165,13 +165,13 @@ class Branch (_AbstractObject):
             )
             and 
             ( # if decision node, player is selected:
-             not isinstance(node, nodes.DecisionNode) 
+             not isinstance(node, nd.DecisionNode) 
              or (include_group is not None and node.player in include_group)
              or (exclude_group is not None and node.player not in exclude_group)
             )):
             # yield from concatenation of partial solutions of all successors,
             # each one enriched by the corresponding transition:
-            if (consistently and isinstance(node, nodes.DecisionNode)):
+            if (consistently and isinstance(node, nd.DecisionNode)):
                 for action in node.actions:
                     for transitions in self._get_transitions(
                             node=node.consequences[action], include_types=include_types, exclude_types=exclude_types, 
@@ -185,7 +185,7 @@ class Branch (_AbstractObject):
                             include_group=include_group, exclude_group=exclude_group, consistently=consistently):
                         transitions[node] = successor
                         yield transitions
-        elif isinstance(node, nodes.InnerNode):
+        elif isinstance(node, nd.InnerNode):
             # yield from cartesian product of strategies of all successors:
             cartesian_product = itertools.product(*(
                 self._get_transitions(
@@ -203,26 +203,26 @@ class Branch (_AbstractObject):
                         transitions.update(component)
                 if is_ok:
                     yield transitions
-        elif isinstance(node, nodes.LeafNode):
+        elif isinstance(node, nd.LeafNode):
             yield {}
     
     def get_partial_solutions(self, node=None, include_types=None, exclude_types=None, 
                               include_group=None, exclude_group=None, consistently=None):
         """helper function"""
-        assert isinstance(node, nodes.Node)
+        assert isinstance(node, nd.Node)
         if include_types is not None:
             assert exclude_types is None, "either specify include_types or exclude_types"
             for ty in include_types:
-                assert issubclass(ty, nodes.InnerNode)
+                assert issubclass(ty, nd.InnerNode)
         else:
             assert exclude_types is not None, "either specify include_types or exclude_types"
             for ty in exclude_types:
-                assert issubclass(ty, nodes.InnerNode)
+                assert issubclass(ty, nd.InnerNode)
         if include_group is not None:
             assert exclude_group is None, "you cannot specify both include_group or exclude_group"
             assert isinstance(include_group, Group)
-        elif ((include_types is not None and nodes.DecisionNode in include_types) 
-              or (exclude_types is not None and nodes.DecisionNode not in exclude_types)):
+        elif ((include_types is not None and nd.DecisionNode in include_types) 
+              or (exclude_types is not None and nd.DecisionNode not in exclude_types)):
             assert exclude_group is not None, "either specify include_group or exclude_group"
             assert isinstance(exclude_group, Group) 
         assert isinstance(consistently, bool)
@@ -236,11 +236,11 @@ class Branch (_AbstractObject):
         If node is a DecisionNode, it must belong to that player or group.
         @return: generator for Scenario objects   
         """
-        if player:
+        if player is not None:
             assert group is None
             group = Group("_", players={player})
         assert isinstance(group, Group)
-        if isinstance(node, nodes.DecisionNode):
+        if isinstance(node, nd.DecisionNode):
             assert node.player in group
             # yield from concatenation of scenarios of all nodes in same information set:
             nodes = node.information_set.nodes
@@ -248,20 +248,20 @@ class Branch (_AbstractObject):
             nodes = {node}
         for v in node.information_set.nodes: 
             for transitions in self._get_transitions(
-                    node=v, include_types=(nodes.PossibilityNode, nodes.DecisionNode), 
+                    node=v, include_types=(nd.PossibilityNode, nd.DecisionNode), 
                     exclude_group=group, consistently=True):
                 yield Scenario("_", anchor=v, transitions=transitions)
     
     def _get_choices(self, node=None, group=None):
         """helper function"""
-        if isinstance(node, nodes.DecisionNode) and node.player in group:
+        if isinstance(node, nd.DecisionNode) and node.player in group:
             # yield from concatenation of partial strategies at all successors,
             # each one enriched by the corresponding choice:
             for action in node.actions:
                 for choices in self._get_choices(node=node.consequences[action], group=group):
                     choices[node.information_set] = action
                     yield choices
-        elif isinstance(node, nodes.InnerNode):
+        elif isinstance(node, nd.InnerNode):
             # yield from cartesian product of strategies at all successors:
             cartesian_product = itertools.product(*(
                 self._get_choices(node=successor, group=group)
@@ -273,7 +273,7 @@ class Branch (_AbstractObject):
                     is_consistent = is_consistent and update_consistently(choices, component)
                     if not is_consistent: break
                 if is_consistent: yield choices
-        elif isinstance(node, nodes.LeafNode):
+        elif isinstance(node, nd.LeafNode):
             yield {}
         
     def get_strategies(self, node=None, player=None, group=None):
@@ -281,12 +281,12 @@ class Branch (_AbstractObject):
         If node is a DecisionNode, it must belong to that player or group.
         @return: generator for Strategy objects   
         """
-        assert isinstance(node, nodes.Node)
-        if player:
+        assert isinstance(node, nd.Node)
+        if player is not None:
             assert group is None
             group = Group("_", players={player})
         assert isinstance(group, Group)
-        if isinstance(node, nodes.DecisionNode):
+        if isinstance(node, nd.DecisionNode):
             assert node.player in group
             # yield from cartesian product of strategies of all nodes in same information set:
             nodes = node.information_set.nodes
@@ -307,9 +307,9 @@ class Branch (_AbstractObject):
         
     def _get_outcome_distribution(self, node=None, transitions=None):
         """helper function"""
-        if isinstance(node, nodes.OutcomeNode):
+        if isinstance(node, nd.OutcomeNode):
             return {node.outcome: 1}
-        elif not isinstance(node, nodes.ProbabilityNode):
+        elif not isinstance(node, nd.ProbabilityNode):
             successor = transitions[node] if node in transitions else node.consequences[transitions[node.information_set]]
             return self._get_outcome_distribution(successor, transitions)
         else:
@@ -329,10 +329,10 @@ class Branch (_AbstractObject):
         """
         assert isinstance(scenario, Scenario)
         assert isinstance(strategy, Strategy)
-        transitions = scenario.transitions
-        for ins, act in strategy.choices.items():
-            assert ins not in transitions, "scenario and strategy must not overlap"
-            transitions[ins] = act
+        transitions = {**scenario.transitions}
+        for S, act in strategy.choices.items():
+            assert S not in transitions, "scenario and strategy must not overlap"
+            transitions[S] = act
         return self._get_outcome_distribution(node=self.root, transitions=transitions)
 
     def __repr__(self):

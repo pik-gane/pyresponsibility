@@ -214,7 +214,7 @@ class DecisionNode (InnerNode):
     @property
     def information_set(self):
         if self._i_information_set is None:
-            InformationSet("_ins_" + self.name, nodes={self})
+            InformationSet("S_" + self.name, nodes={self})
         return self._i_information_set
 
     def validate(self):
@@ -240,7 +240,8 @@ class DecisionNode (InnerNode):
     def _base_repr(self):
         return (Node.__repr__(self) 
                 + (" (" + self.information_set.name + ")" if len(self.information_set.nodes) > 1 else "")
-                + ": " + repr(self.player))
+                + ": " 
+                + repr(self.player))
         
     def __repr__(self):
         return self._base_repr() + " …"
@@ -252,22 +253,21 @@ class DecisionNode (InnerNode):
                 + su[-1][1]._to_lines(pre2 + "╰─╴" + repr(su[-1][0]) + "╶─╴", pre2 + "      " + " "*len(repr(su[-1][0]))))
 
     def _add_to_dot(self, dot):
-        Node._add_to_dot(self, dot)
+        vs = list(self.information_set.nodes)
+        if len(vs) > 1:
+            if vs[0] == self:
+                with dot.subgraph(name="cluster_" + self.information_set.name,
+                                  graph_attr={
+                                      "label": self.information_set.name,
+                                      "style": "dashed"
+                                  }) as sub:
+                    for v in vs:
+                        Node._add_to_dot(v, sub)
+        else:
+            Node._add_to_dot(self, dot)
         for a, v in self.consequences.items():
             v._add_to_dot(dot)
             dot.edge(self._get_dotname(), v._get_dotname(), label=a.name)
-        vs = list(self.information_set.nodes)
-        if len(vs) > 1 and vs[0] == self:
-            with dot.subgraph(edge_attr={"dir": "none", 
-                                         "constraint": "false", 
-                                         "style": "dashed"}) as sub:
-                v1 = self
-                for v2 in vs[1:]:
-                    sub.edge(v1._get_dotname(), v2._get_dotname(),
-                             headlabel=" " + self.information_set.name + " " if v1==self else "",
-                             len="0.0001")
-                    v1 = v2
-
 
 DeN = DecisionNode
 

@@ -4,18 +4,19 @@ from sympy import symbols
 
 
 """
+global_symbols("")
  = symbols("")
 
-T = Tree("", ro=)
-
 global_players("")
-= Pl("")
+ = Pl("")
 
 global_actions("")
-= Ac("")
+ = Ac("")
 
  = Ou("", ac=True)
  = Ou("", ac=False)
+
+T = Tree("", ro=)
 
 OuN("", ou=)
 
