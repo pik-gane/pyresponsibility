@@ -13,6 +13,16 @@ from . import nodes as nd
 
 
 class Branch (_AbstractObject):
+    """Represents that part of the tree that starts at some anchor node that
+    serves as the branch's "root".
+    @param root: the node serving as the branch's root 
+           (not necessarily the root of the whole tree)
+           
+    This class also provides many methods to be used in responsibility calculations,
+    e.g. to find all players, outcomes, nodes, or information sets occurring in
+    this branch, find all scenarios or strategies starting at the branch's root node,
+    or to find the outcome distribution resulting from a scenario-strategy pair.
+    """
     
     _i_root = None
     @property
@@ -372,7 +382,9 @@ class Branch (_AbstractObject):
         self.root._add_to_dot(dot)
         dot.render(outfile=filename, view=show)
 
+
 class Tree (Branch):
+    """Represents the whole tree (=the branch starting at the tree's root node)"""
     
     def validate(self):
         assert self.root.predecessor is None

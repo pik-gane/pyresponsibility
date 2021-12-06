@@ -3,6 +3,8 @@ from . import nodes
 
 
 class PartialSolution (_AbstractObject):
+    """Represents a set of transitions between nodes.
+    Parent class of Scenario"""
     
     _i_transitions = None
     @property
@@ -18,6 +20,8 @@ class PartialSolution (_AbstractObject):
 
             
 class Scenario (PartialSolution):
+    """Represents a combination of choices made by "nature" at PossibilityNodes
+    and ProbabilityNodes and choices made by all players outside a certain group""" 
     
     _i_anchor = None
     @property
@@ -34,6 +38,7 @@ class Scenario (PartialSolution):
 
     
 class Strategy (_AbstractObject):
+    """Represents a combination of choices made by the players in a certain group""" 
     
     _i_anchor = None
     @property

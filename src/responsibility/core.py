@@ -25,6 +25,8 @@ abbreviations = {
     }
         
 class _AbstractObject (object):
+    """Parent class for objects that have a name and optionally a description,
+    such as Agent, Group, Action, Outcome, Node."""
 
     _c_symbols = []
     @property
@@ -57,17 +59,19 @@ class _AbstractObject (object):
     def validate(self): pass
 
     def __str__(self): return self._i_name
+    
     def __repr__(self): return self._i_name
 
 
 # helper functions:
     
 def hasname(ob):
+    """Does the object have a name that begins with a letter?""" 
     return hasattr(ob, "name") and isinstance(ob.name, str) and len(ob.name)>0 and ob.name[0].isalpha()
     
 def update_consistently(base, other):
-    """updates dict base with dict until a conflict is found.
-    returns whether a conflict was found.""" 
+    """Update base dict with other dict until a conflict is found.
+    Returns whether a conflict was found.""" 
     for key, value in other.items():
         if base.setdefault(key, value) != value:
             # attempted update is inconsistent with content, so stop here

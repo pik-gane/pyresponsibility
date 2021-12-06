@@ -2,9 +2,9 @@ from .core import _AbstractObject, hasname
 
 
 class Outcome (_AbstractObject):
+    """Represents an outcome attached to one or more outcome nodes,
+    and states whether it is ethically acceptable"""
 
-    _c_symbols = ["o"]
-    
     _i_is_acceptable = None
     @property
     def is_acceptable(self):
@@ -18,4 +18,5 @@ class Outcome (_AbstractObject):
         return (self.name + " " if hasname(self) else "") + ("✔" if self.is_acceptable else "✖")
 
 Ou = Outcome
+"""Abbreviation for Outcome"""
 

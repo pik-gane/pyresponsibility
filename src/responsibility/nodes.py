@@ -10,27 +10,21 @@ from . import trees
 
 
 class Node (_AbstractObject):
+    """Parent class for all types of nodes"""
 
     _c_dotshape = "oval"
+    """Shape used in rendering via graphviz"""
 
     _a_predecessor = None
     @property
     def predecessor(self):
-        """predecessor Node if not is_root"""
+        """Predecessor Node if not is_root"""
         return self._a_predecessor
-
-    _a_branch = None
-    @property
-    def branch(self):
-        """the Branch starting at this node"""
-        if self._a_branch is None:
-            self._a_branch = trees.Branch("_br_" + self.name, root=self)
-        return self._a_branch
 
     _a_history = None
     @property
     def history(self):
-        """list of Nodes from root to predecessor"""
+        """List of Nodes from root to predecessor"""
         if self._a_history is None:
             if self.predecessor is None:
                 self._a_history = []
@@ -38,34 +32,49 @@ class Node (_AbstractObject):
                 self._a_history = self.predecessor.history + [self.predecessor]
         return self._a_history
 
+    _a_branch = None
+    @property
+    def branch(self):
+        """The Branch starting at this node"""
+        if self._a_branch is None:
+            self._a_branch = trees.Branch("_br_" + self.name, root=self)
+        return self._a_branch
+
     _a_tree = None
     @property
     def tree(self):
-        """the whole Tree containing this node"""
+        """The whole (!) Tree containing this node 
+        (not just the branch starting here)"""
         if self._a_tree is None:
             self._a_tree = trees.Tree((self.history + [self])[0])
         return self._a_tree
 
     def __repr__(self):
+        """Short string representation"""
         return self.name if hasname(self) else "•"
 
     def _to_lines(self, pre1, pre2):
+        """Generate one or more lines for the detailed description of a branch"""
         return "\n" + pre1 + repr(self)
         
     _a_dotname = None
     def _get_dotname(self):
+        """Get an id to be used internally in the graphviz file"""
         if self._a_dotname is None:
             self._a_dotname = self.name if hasname(self) else "_" + str(random.random())
         return self._a_dotname
 
     def _add_to_dot(self, dot):
+        """Add this node to the graphviz ("dot") file"""
         dot.node(self._get_dotname(), 
                  (self.name if hasname(self) else "")
                  + ("\n" if hasname(self) and hasattr(self, "player") else "")
                  + (self.player.name if hasattr(self, "player") else ""),
                  shape=self._c_dotshape)
         
+        
 class InnerNode (Node):
+    """Parent class for all nodes whith have at least one successor node"""
 
     _i_successors = None
     @property
@@ -94,7 +103,9 @@ class InnerNode (Node):
             v._add_to_dot(dot)
             dot.edge(self._get_dotname(), v._get_dotname())
 
+
 class LeafNode (Node):
+    """Parent class for all leaf nodes (currently only OutcomeNode)"""
     pass
 
     
@@ -155,16 +166,21 @@ class PossibilityNode (InnerNode):
                      label=self.labels.get(v, ""))
 
 PoN = PossibilityNode
+"""Abbreviation for PossibilityNode"""
 
     
 class ProbabilityNode (InnerNode):
+    """A node representing a stochastic event with known probabilities.
+    @param probabilities: dict of probabilities keyed by successor Node.
+    Values can be numbers or sympy expressions.
+    """
     
     _c_dotshape = "rect"
 
     _i_probabilities = None
     @property
     def probabilities(self):
-        """dict of successor Node: probability 0...1"""
+        """Dict of successor Node: probability 0...1"""
         return self._i_probabilities
 
     def validate(self):
@@ -194,8 +210,19 @@ class ProbabilityNode (InnerNode):
             dot.edge(self._get_dotname(), v._get_dotname(), label=str(p))
 
 PrN = ProbabilityNode
+"""Abbreviation for ProbabilityNode"""
+
 
 class DecisionNode (InnerNode):
+    """A node representing a choice of exactly one of several possible actions
+    to made by some player.
+    @param player: the acting Player
+    @param consequences: dict of successor Node keyed by Action
+    @param information_set: optional InformationSet this node belongs to.
+           (alternatively, the InformationSet can also be specified later by
+           instantiating an instance of InformationSet and giving it a set of
+           DecisionNodes)
+    """
 
     _c_dotshape = "diamond"
 
@@ -270,11 +297,14 @@ class DecisionNode (InnerNode):
             dot.edge(self._get_dotname(), v._get_dotname(), label=a.name)
 
 DeN = DecisionNode
+"""Abbreviation for DecisionNode"""
 
 
 class OutcomeNode (LeafNode):
-
-    _c_symbols = ["vo"]
+    """A leaf node representing a situation where no further uncertainty about
+    the outcome exists.
+    @param outcome: the corresponding Outcome object
+    """
 
     _i_outcome = None
     @property
@@ -298,9 +328,17 @@ class OutcomeNode (LeafNode):
 
         
 OuN = OutcomeNode
+"""Abbreviation for OutcomeNode"""
 
 
 class InformationSet (_AbstractObject):
+    """Represents a set of DecisionNodes belonging to the same player 
+    which the player cannot distinguish from their information when in one of 
+    these DecisionNodes. 
+    @param nodes: set of DecisionNodes belonging to this information set.
+    All these nodes must have the exact same set of possible actions for the
+    player.
+    """
     
     _i_nodes = None
     @property
@@ -354,3 +392,5 @@ class InformationSet (_AbstractObject):
         return (self.name + ": " if hasname(self) else "") + repr(self.nodes)
 
 InS = InformationSet
+"""Abbreviation for InformationSet"""
+

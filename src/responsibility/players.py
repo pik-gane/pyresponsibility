@@ -4,19 +4,18 @@ from .core import _AbstractObject, hasname
 
 
 class Player (_AbstractObject):
-
-    _c_symbols = ["i", "j"]
+    """Represents a player who can take one of several actions at one or more 
+    decision nodes"""
 
     def __repr__(self):
         return self.name if hasname(self) else "~"
 
 Pl = Player
-    
+"""Abbreviation for Player"""
 
 class Group (_AbstractObject):
+    """Represents any subset of the set of players"""
 
-    _c_symbols = ["G", "H"]
-    
     _i_players = None
     @property
     def players(self):
@@ -34,8 +33,8 @@ class Group (_AbstractObject):
     def __repr__(self):
         return self.name if hasname(self) else "{*}"
         
-
 Gr = Group
+"""Abbreviation for Group"""
 
 def players(*names):
     """Return a Player for each name listed as an argument"""

@@ -4,10 +4,12 @@ from .core import _AbstractObject
 
 
 class Action (_AbstractObject):
-
-    _c_symbols = ["a", "b"]
+    """Represents an action that one or more players could take in one or more
+    decision nodes"""
+    pass
 
 Ac = Action
+"""Abbreviation for Action"""
 
 def actions(*names):
     """Return an Action for each name listed as an argument"""
