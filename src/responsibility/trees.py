@@ -156,6 +156,7 @@ class Branch (_AbstractObject):
         
     # generators for solutions:
     
+    @profile
     def _get_transitions(self, node=None, include_types=None, exclude_types=None, 
                          include_group=None, exclude_group=None, consistently=None):
         """helper function"""
@@ -192,16 +193,21 @@ class Branch (_AbstractObject):
                     node=successor, include_types=include_types, exclude_types=exclude_types, 
                     include_group=include_group, exclude_group=exclude_group, consistently=consistently)
                 for successor in node.successors))
-            for combination in cartesian_product:
-                transitions = {}
-                is_ok = True
-                for component in combination:
-                    if consistently: 
-                        is_ok = is_ok and update_consistently(transitions, component)
-                        if not is_ok: break
-                    else:
+            if consistently: 
+                for combination in cartesian_product:
+                    transitions = {}
+                    is_ok = True
+                    for component in combination:
+                        is_ok = update_consistently(transitions, component)
+                        if not is_ok: 
+                            break
+                    if is_ok:
+                        yield transitions
+            else:
+                for combination in cartesian_product:
+                    transitions = {}
+                    for component in combination:
                         transitions.update(component)
-                if is_ok:
                     yield transitions
         elif isinstance(node, nd.LeafNode):
             yield {}
@@ -252,6 +258,7 @@ class Branch (_AbstractObject):
                     exclude_group=group, consistently=True):
                 yield Scenario("_", anchor=v, transitions=transitions)
     
+    @profile
     def _get_choices(self, node=None, group=None):
         """helper function"""
         if isinstance(node, nd.DecisionNode) and node.player in group:
@@ -270,9 +277,11 @@ class Branch (_AbstractObject):
                 choices = {}
                 is_consistent = True
                 for component in combination:
-                    is_consistent = is_consistent and update_consistently(choices, component)
-                    if not is_consistent: break
-                if is_consistent: yield choices
+                    is_consistent = update_consistently(choices, component)
+                    if not is_consistent: 
+                        break
+                if is_consistent: 
+                    yield choices
         elif isinstance(node, nd.LeafNode):
             yield {}
         
@@ -304,25 +313,41 @@ class Branch (_AbstractObject):
             if is_consistent: yield Strategy("_", anchor=node, choices=choices)
         
     # outcome distributions:
+        
+    _n_not_used_cache = 0
+    _n_used_cache = 0
+    _d_outcome_distribution = {}
     #@profile
     def _get_outcome_distribution(self, node=None, transitions=None):
         """helper function"""
         if isinstance(node, nd.OutcomeNode):
             return {node.outcome: 1}
         elif not isinstance(node, nd.ProbabilityNode):
-            successor = transitions[node] if node in transitions else node.consequences[transitions[node.information_set]]
-            return self._get_outcome_distribution(successor, transitions)
+            new_transitions = transitions.copy()
+            if node in transitions:
+                successor = new_transitions.pop(node) 
+            else:
+                successor = node.consequences[new_transitions.pop(node.information_set)]
+            return self._get_outcome_distribution(successor, new_transitions)
         else:
-            distribution = {}
-            for successor, p1 in node.probabilities.items():
-                for outcome, p2 in self._get_outcome_distribution(successor, transitions).items():
-                    p = distribution.get(outcome, 0) + p1*p2
-                    if isinstance(p, sp.Expr):
-                        p = sp.simplify(p)
-                    distribution[outcome] = p
+            key = frozenset(transitions.items())
+            try:
+                res = self._d_outcome_distribution[key]
+                self._n_used_cache += 1
+                return res
+            except:
+                _n_not_used_cache += 1
+                distribution = {}
+                for successor, p1 in node.probabilities.items():
+                    for outcome, p2 in self._get_outcome_distribution(successor, transitions).items():
+                        p = distribution.get(outcome, 0) + p1*p2
+                        if isinstance(p, sp.Expr):
+                            p = sp.simplify(p)
+                        distribution[outcome] = p
+                distribution
+            self._d_outcome_distribution[key] = distribution
             return distribution
             
-    #@profile
     def get_outcome_distribution(self, scenario=None, strategy=None):
         """Returns the probability of outcomes resulting from a given
         scenario and strategy.

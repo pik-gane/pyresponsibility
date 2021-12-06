@@ -33,16 +33,17 @@ print(len(list(T.get_scenarios(vi, player=i))))
 print(np.mean([T.get_outcome_distribution(sc, st_iC).get(enough, 0) for sc in T.get_scenarios(vi, player=i)]))
 print(time()-start, "sec.")
 
-def doit():
-    start = time()
-    print(sum(1 for _ in T.get_strategies(vi, player=i)))
-    print(np.mean([T.get_outcome_distribution(scenario=sc_jCkD, strategy=st).get(enough, 0) for st in T.get_strategies(vi, player=i)]))
-    print(time()-start, "sec.")
-doit()
 profile.print_stats()
 
 
 exit()
+
+start = time()
+print(sum(1 for _ in T.get_strategies(vi, player=i)))
+print(np.mean([T.get_outcome_distribution(scenario=sc_jCkD, strategy=st).get(enough, 0) for st in T.get_strategies(vi, player=i)]))
+print(time()-start, "sec.")
+
+print(T._n_not_used_cache, T._n_used_cache)
 
 T.make_globals()
 

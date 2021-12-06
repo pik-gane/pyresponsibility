@@ -69,10 +69,8 @@ def update_consistently(base, other):
     """updates dict base with dict until a conflict is found.
     returns whether a conflict was found.""" 
     for key, value in other.items():
-        if key not in base:
-            base[key] = value
-        elif base[key] != value: 
-            # attempted update is inconsistent with content
+        if base.setdefault(key, value) != value:
+            # attempted update is inconsistent with content, so stop here
             return False
     return True    
     
