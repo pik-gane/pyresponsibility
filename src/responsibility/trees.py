@@ -12,13 +12,6 @@ from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes as nd
 
 
-"""
-TODO:
-- export to graphviz and networkx, rendering
-
-"""
-
-
 class Branch (_AbstractObject):
     
     _i_root = None
@@ -26,7 +19,7 @@ class Branch (_AbstractObject):
     def root(self): 
         return self._i_root
     
-    # properties holding dicts of objects keyed by their name:
+    # properties holding dicts of named objects keyed by their name:
     
     _a_nodes = None
     @property

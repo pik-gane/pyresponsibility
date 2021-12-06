@@ -6,7 +6,7 @@ from ..__init__ import *
 
 global_players("i")
 
-pass_, shoot = actions("pass", "shoot")
+global_actions("pass_", "shoot")
 
 lives = Ou("lives", ac=True)
 dies = Ou("dies", ac=False)

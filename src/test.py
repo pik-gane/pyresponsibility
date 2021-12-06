@@ -4,14 +4,16 @@ from responsibility import *
 #from responsibility.problems.qrpc_fig3 import T
 #from responsibility.problems.drsc_fig1a import T
 #from responsibility.problems.drsc_fig1b import T
+#from responsibility.problems.drsc_fig1c import T
+from responsibility.problems.drsc_fig1d import T
 #from responsibility.problems.drsc_fig2b import T
-from responsibility.problems.repeated_public_good_2_of_3 import *
+#from responsibility.problems.repeated_public_good_2_of_3 import *
 
-print(len(T.nodes))
+print(repr(T))
 
-#print(repr(T))
+T.draw("/tmp/test.pdf", show=True)
 
-#T.draw("/tmp/test.pdf", show=True)
+exit()
 
 sc_allD = Scenario("allD", anchor=vi, tr={
     S: D for S in T.information_sets.values() if S.player != i
