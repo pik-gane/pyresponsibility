@@ -1,19 +1,26 @@
 from time import time
 
 from responsibility import *
-#from responsibility.problems.qrpc_fig3 import T
 #from responsibility.problems.drsc_fig1a import T
 #from responsibility.problems.drsc_fig1b import T
-#from responsibility.problems.drsc_fig1c import T
-from responsibility.problems.drsc_fig1d import T
+from responsibility.problems.drsc_fig1c import T
+#from responsibility.problems.drsc_fig1d import T
+#from responsibility.problems.drsc_fig2a import T
 #from responsibility.problems.drsc_fig2b import T
+#from responsibility.problems.drsc_fig3 import T
+#from responsibility.problems.drsc_fig5 import T
+#from responsibility.problems.qrpc_fig3 import T
+#from responsibility.problems.public_good_2_of_3 import *
 #from responsibility.problems.repeated_public_good_2_of_3 import *
 
 print(repr(T))
 
-T.draw("/tmp/test.pdf", show=True)
+print(T.get_guaranteed_likelihood(T.root))
 
 exit()
+
+T.draw("/tmp/test.pdf", show=True)
+
 
 sc_allD = Scenario("allD", anchor=vi, tr={
     S: D for S in T.information_sets.values() if S.player != i
@@ -35,7 +42,7 @@ print(len(list(T.get_scenarios(vi, player=i))))
 print(np.mean([T.get_outcome_distribution(sc, st_iC).get(enough, 0) for sc in T.get_scenarios(vi, player=i)]))
 print(time()-start, "sec.")
 
-profile.print_stats()
+#profile.print_stats()
 
 
 exit()

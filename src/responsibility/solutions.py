@@ -20,8 +20,10 @@ class PartialSolution (_AbstractObject):
 
             
 class Scenario (PartialSolution):
-    """Represents a combination of choices made by "nature" at PossibilityNodes
-    and ProbabilityNodes and choices made by all players outside a certain group""" 
+    """A combination of a certain "anchor" node representing the current state,
+    plus a combination of choices assumed to be made by "nature" at PossibilityNodes
+    and ProbabilityNodes and choices assumed to be made by all players outside 
+    a certain group at certain nodes in the anchor node's branch""" 
     
     _i_anchor = None
     @property
@@ -35,7 +37,7 @@ class Scenario (PartialSolution):
         for source, target in self.transitions.items():
             assert ((isinstance(source, nodes.InnerNode) and target in source.successors) 
                     or (isinstance(source, nodes.InformationSet) and target in source.actions))
-
+                    
     
 class Strategy (_AbstractObject):
     """Represents a combination of choices made by the players in a certain group""" 

@@ -23,7 +23,7 @@ class Group (_AbstractObject):
         return self._i_players
     
     def validate(self):
-        assert isinstance(self.players, set)
+        assert isinstance(self.players, frozenset)
         for player in self.players:
             assert isinstance(player, Player), "group must be set of Players"
             

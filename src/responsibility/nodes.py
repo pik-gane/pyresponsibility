@@ -131,14 +131,15 @@ class PossibilityNode (InnerNode):
     def validate(self):
         if self.labels is None:
             self._i_labels = {}
-        assert isinstance(self.successors, set)
-        for node in list(self.successors):
+        assert isinstance(self.successors, frozenset)
+        su = []
+        for node in self.successors:
             if isinstance(node, tuple):
-                self.successors.remove(node)
                 label, node = node
-                self.successors.add(node)
                 self.labels[node] = label
             assert isinstance(node, Node)
+            su.append(node)
+        self._i_successors = frozenset(su)
         assert isinstance(self.labels, dict)
         for v, l in self.labels.items():
             assert v in self.successors
@@ -324,7 +325,7 @@ class OutcomeNode (LeafNode):
         Node._add_to_dot(self, dot)
         o = self.outcome
         dot.node(o.name, shape="triangle" if o.is_acceptable else "invtriangle")
-        dot.edge(self._get_dotname(), o.name, dir="none", len="1000.0")
+        dot.edge(self._get_dotname(), o.name, dir="none")
 
         
 OuN = OutcomeNode
@@ -358,7 +359,7 @@ class InformationSet (_AbstractObject):
         self.validate()
         
     def validate(self):
-        assert isinstance(self.nodes, set), "information set must be a set of DecisionNodes"
+        assert isinstance(self.nodes, (set, frozenset)), "information set must be a (frozen)set of DecisionNodes"
         if len(self.nodes) > 0:
             self._a_player = list(self.nodes)[0].player
             for node in self.nodes:

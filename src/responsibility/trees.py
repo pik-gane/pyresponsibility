@@ -11,6 +11,10 @@ from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes as nd
 
+"""
+References:
+AAFRA: Hiller, S., Israel, J., & Heitzig, J. (2021). An Axiomatic Approach to Formalized Responsibility Ascription.
+"""
 
 class Branch (_AbstractObject):
     """Represents that part of the tree that starts at some anchor node that
@@ -159,7 +163,7 @@ class Branch (_AbstractObject):
         
     # generators for solutions:
     
-    @profile
+    #@profile
     def _get_transitions(self, node=None, include_types=None, exclude_types=None, 
                          include_group=None, exclude_group=None, consistently=None):
         """helper function"""
@@ -217,7 +221,7 @@ class Branch (_AbstractObject):
     
     def get_partial_solutions(self, node=None, include_types=None, exclude_types=None, 
                               include_group=None, exclude_group=None, consistently=None):
-        """helper function"""
+        """helper method"""
         assert isinstance(node, nd.Node)
         if include_types is not None:
             assert exclude_types is None, "either specify include_types or exclude_types"
@@ -241,10 +245,12 @@ class Branch (_AbstractObject):
             yield PartialSolution("_", transitions=transitions)
         
     def get_scenarios(self, node=None, player=None, group=None):
-        """Return all scenarios for the given player or group starting at the given node.
-        If node is a DecisionNode, it must belong to that player or group.
+        """Return all scenarios for the given player or group starting at the 
+        branch's root node.
+        If that is a DecisionNode, it must belong to that player or group.
         @return: generator for Scenario objects   
         """
+        assert isinstance(node, nd.Node)
         if player is not None:
             assert group is None
             group = Group("_", players={player})
@@ -255,15 +261,15 @@ class Branch (_AbstractObject):
             nodes = node.information_set.nodes
         else:
             nodes = {node}
-        for v in node.information_set.nodes: 
+        for v in nodes: 
             for transitions in self._get_transitions(
                     node=v, include_types=(nd.PossibilityNode, nd.DecisionNode), 
                     exclude_group=group, consistently=True):
                 yield Scenario("_", anchor=v, transitions=transitions)
     
-    @profile
+    #@profile
     def _get_choices(self, node=None, group=None):
-        """helper function"""
+        """helper method"""
         if isinstance(node, nd.DecisionNode) and node.player in group:
             # yield from concatenation of partial strategies at all successors,
             # each one enriched by the corresponding choice:
@@ -289,8 +295,9 @@ class Branch (_AbstractObject):
             yield {}
         
     def get_strategies(self, node=None, player=None, group=None):
-        """Return all strategies for the given player or group starting at the given node.
-        If node is a DecisionNode, it must belong to that player or group.
+        """Return all strategies for the given player or group starting at the 
+        branch's root node.
+        If that is a DecisionNode, it must belong to that player or group.
         @return: generator for Strategy objects   
         """
         assert isinstance(node, nd.Node)
@@ -312,17 +319,20 @@ class Branch (_AbstractObject):
             is_consistent = True
             for component in combination:
                 is_consistent = is_consistent and update_consistently(choices, component)
-                if not is_consistent: break
-            if is_consistent: yield Strategy("_", anchor=node, choices=choices)
+                if not is_consistent: 
+                    break
+            if is_consistent: 
+                yield Strategy("_", anchor=node, choices=choices)
         
     # outcome distributions:
         
     _n_not_used_cache = 0
     _n_used_cache = 0
+    
     _d_outcome_distribution = {}
     #@profile
     def _get_outcome_distribution(self, node=None, transitions=None):
-        """helper function"""
+        """helper method"""
         if isinstance(node, nd.OutcomeNode):
             return {node.outcome: 1}
         elif not isinstance(node, nd.ProbabilityNode):
@@ -333,36 +343,138 @@ class Branch (_AbstractObject):
                 successor = node.consequences[new_transitions.pop(node.information_set)]
             return self._get_outcome_distribution(successor, new_transitions)
         else:
-            key = frozenset(transitions.items())
+            key = (node, frozenset(transitions.items()))
             try:
-                res = self._d_outcome_distribution[key]
+                distribution = self._d_outcome_distribution[key]
                 self._n_used_cache += 1
-                return res
+                return distribution
             except:
-                _n_not_used_cache += 1
+                self._n_not_used_cache += 1
                 distribution = {}
                 for successor, p1 in node.probabilities.items():
                     for outcome, p2 in self._get_outcome_distribution(successor, transitions).items():
-                        p = distribution.get(outcome, 0) + p1*p2
-                        if isinstance(p, sp.Expr):
-                            p = sp.simplify(p)
-                        distribution[outcome] = p
-                distribution
-            self._d_outcome_distribution[key] = distribution
-            return distribution
+                        distribution[outcome] = distribution.get(outcome, 0) + p1*p2
+                self._d_outcome_distribution[key] = distribution
+                return distribution
             
-    def get_outcome_distribution(self, scenario=None, strategy=None):
+    def get_outcome_distribution(self, node=None, scenario=None, strategy=None):
         """Returns the probability of outcomes resulting from a given
         scenario and strategy.
         @return: dict of probability keyed by Outcome
         """
-        assert isinstance(scenario, Scenario)
-        assert isinstance(strategy, Strategy)
+        assert isinstance(node, nd.Node)
+        assert isinstance(scenario, Scenario) and node in scenario.anchor.information_set
+        assert isinstance(strategy, Strategy) and node in strategy.anchor.information_set
         transitions = {**scenario.transitions}
         for S, act in strategy.choices.items():
             assert S not in transitions, "scenario and strategy must not overlap"
             transitions[S] = act
-        return self._get_outcome_distribution(node=self.root, transitions=transitions)
+        distribution = self._get_outcome_distribution(node=scenario.anchor, transitions=transitions)
+        for (ou, p) in distribution.items():
+            if isinstance(p, sp.Expr):
+                distribution[ou] = sp.simplify(p)
+        return distribution
+
+    _d_expectation = {}
+    def _get_expectation(self, node=None, transitions=None, attribute=None):
+        """helper method"""
+        if isinstance(node, nd.OutcomeNode):
+            return getattr(node.outcome, attribute, 0)
+        elif not isinstance(node, nd.ProbabilityNode):
+            new_transitions = transitions.copy()
+            if node in transitions:
+                successor = new_transitions.pop(node) 
+            else:
+                successor = node.consequences[new_transitions.pop(node.information_set)]
+            return self._get_expectation(successor, new_transitions, attribute)
+        else:
+            key = (node, frozenset(transitions.items()), attribute)
+            try:
+                expectation = self._d_expectation[key]
+                self._n_used_cache += 1
+                return expectation
+            except:
+                self._n_not_used_cache += 1
+                expectation = 0
+                for successor, p1 in node.probabilities.items():
+                    expectation += p1 * self._get_expectation(successor, transitions, attribute)
+                self._d_expectation[key] = expectation
+                return expectation
+    
+    def get_expectation(self, node=None, scenario=None, strategy=None, attribute=None):
+        """Calculate the expectation value of some outcome attribute
+        conditional on being in the branch's root node and assuming a certain scenario and strategy.
+        @param attribute: name of the outcome attribute
+        If the outcome lacks the attribute, a zero value is assumed.
+        """
+        assert isinstance(node, nd.Node)
+        assert isinstance(scenario, Scenario) and node in scenario.anchor.information_set
+        assert isinstance(strategy, Strategy) and node in strategy.anchor.information_set
+        assert isinstance(attribute, str)
+        transitions = {**scenario.transitions}
+        for S, act in strategy.choices.items():
+            assert S not in transitions, "scenario and strategy must not overlap"
+            transitions[S] = act
+        expectation = self._get_expectation(node=scenario.anchor, transitions=transitions, attribute=attribute)
+        return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
+        
+    _d_likelihood = {}
+    def _get_likelihood(self, node=None, transitions=None, is_acceptable=False):
+        """helper method"""
+        if isinstance(node, nd.OutcomeNode):
+            return 1 if node.outcome.is_acceptable == is_acceptable else 0
+        elif not isinstance(node, nd.ProbabilityNode):
+            new_transitions = transitions.copy()
+            if node in transitions:
+                successor = new_transitions.pop(node) 
+            else:
+                successor = node.consequences[new_transitions.pop(node.information_set)]
+            return self._get_likelihood(successor, new_transitions, is_acceptable)
+        else:
+            key = (node, frozenset(transitions.items()), is_acceptable)
+            try:
+                likelihood = self._d_likelihood[key]
+                self._n_used_cache += 1
+                return likelihood
+            except:
+                self._n_not_used_cache += 1
+                likelihood = 0
+                for successor, p1 in node.probabilities.items():
+                    likelihood += p1 * self._get_likelihood(successor, transitions, is_acceptable)
+                self._d_likelihood[key] = likelihood
+                return likelihood
+    
+    def get_likelihood(self, node=None, scenario=None, strategy=None, is_acceptable=False):
+        """Calculate the probability of an unacceptable (or acceptable) outcome
+        conditional on being in the branch's root node and assuming a certain scenario and strategy.
+        @param is_acceptable: whether the probability of unacceptable (False) or acceptable (True)
+               outcomes is sought (default: False)
+        """
+        assert isinstance(node, nd.Node)
+        assert isinstance(scenario, Scenario) and node in scenario.anchor.information_set
+        assert isinstance(strategy, Strategy) and node in strategy.anchor.information_set
+        assert isinstance(is_acceptable, bool)
+        transitions = {**scenario.transitions}
+        for S, act in strategy.choices.items():
+            assert S not in transitions, "scenario and strategy must not overlap"
+            transitions[S] = act
+        likelihood = self._get_likelihood(node=scenario.anchor, transitions=transitions, is_acceptable=is_acceptable)
+        return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
+    
+    def get_guaranteed_likelihood(self, node, is_acceptable=False):
+        """Calculate the known guaranteed likelihood (minimum likelihood over
+        all scenario and strategies, called gamma in AAFRA"""
+        assert isinstance(node, nd.DecisionNode)
+        gamma = None
+        for strategy in self.get_strategies(node, player=node.player):
+            for scenario in self.get_scenarios(node, player=node.player):
+                l = self.get_likelihood(node, scenario, strategy, is_acceptable)
+                gamma = (l if gamma is None 
+                         else sp.Min(gamma, l) if isinstance(gamma, sp.Expr) or isinstance(l, sp.Expr) 
+                         else min(gamma, l))
+        return sp.simplify(gamma) if isinstance(gamma, sp.Expr) else gamma
+
+    # other methods_
 
     def __repr__(self):
         """Returns a multi-line half-graphical representation of the tree.
@@ -377,7 +489,14 @@ class Branch (_AbstractObject):
         return self.name + ":" + self.root._to_lines("", "")
 
     def draw(self, filename, show=False):
-        """Draw the tree using graphviz and potentially show it"""
+        """Draw the tree using graphviz and potentially show it.
+        Possibility nodes are diamonds with optionally labeled outgoing arrows, 
+        decision nodes are diamonds with player names and arrows labeled by actions,
+        probability nodes are squares with arrows labeled by probabilities,
+        outcome nodes are circles,
+        acceptable and inacceptable outcomes are upward- and downward-pointing triangles,
+        information sets are dashed boxes.
+        """
         dot = gv.Digraph(comment=self.name, graph_attr={"rankdir": "LR"})
         self.root._add_to_dot(dot)
         dot.render(outfile=filename, view=show)

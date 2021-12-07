@@ -4,12 +4,14 @@ and their application to social choice problems. ArXiv:2007.07352
 
 drsc_fig1d:
 v1: i
-├─╴rescue╶─╴w3: lives ✔
+├─╴rescue╶─╴v3: lives ✔
 ╰─╴pass_╶─╴passed
            ├─╴p╶─╴v2: i
-           │      ├─╴rescue╶─╴w4: lives ✔
-           │      ╰─╴pass_╶─╴w5: dies ✖
-           ╰─╴1 - p╶─╴w6: dies ✖
+           │      ├─╴rescue╶─╴v4: lives ✔
+           │      ╰─╴pass_╶─╴v5: dies ✖
+           ╰─╴1 - p╶─╴v6: dies ✖
+
+Agent i may rescue someone now or, with some probably, later.
 """
 
 from ..__init__ import *
@@ -24,13 +26,13 @@ lives = Ou("lives", ac=True)
 dies = Ou("dies", ac=False)
 
 T = Tree("drsc_fig1d", ro=DeN("v1", pl=i, co={ 
-        rescue: OuN("w3", ou=lives), 
+        rescue: OuN("v3", ou=lives), 
         pass_: PrN("passed", pr={ 
             DeN("v2", pl=i, co={
-                rescue: OuN("w4", ou=lives),
-                pass_: OuN("w5", ou=dies)
+                rescue: OuN("v4", ou=lives),
+                pass_: OuN("v5", ou=dies)
             }): p,
-            OuN("w6", ou=dies): 1 - p
+            OuN("v6", ou=dies): 1 - p
         })
     })
 )

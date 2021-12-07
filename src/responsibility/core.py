@@ -53,6 +53,8 @@ class _AbstractObject (object):
         for attr, value in kwargs.items():
             if attr in abbreviations: attr = abbreviations[attr]
             assert hasattr(self, "_i_"+attr)
+            if isinstance(value, set):
+                value = frozenset(value)
             setattr(self, "_i_"+attr, value)
         self.validate()
         
