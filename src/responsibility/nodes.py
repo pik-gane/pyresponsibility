@@ -21,23 +21,18 @@ class Node (_AbstractObject):
         """Predecessor Node if not is_root"""
         return self._a_predecessor
 
-    _a_path = None
     @property
     def path(self):
-        """List of Nodes from root to predecessor"""
-        if self._a_path is None:
-            if self.predecessor is None:
-                self._a_path = []
-            else:
-                self._a_path = self.predecessor.path + [self.predecessor]
-        return self._a_path
-
+        """List of Nodes from root to self"""
+        return [self] if self.predecessor is None else self.predecessor.path + [self]
+        # Note: cannot be cached since it is mutable!
+        
     _a_branch = None
     @property
     def branch(self):
         """The Branch starting at this node"""
         if self._a_branch is None:
-            self._a_branch = trees.Branch("_br_" + self.name, root=self)
+            self._a_branch = trees.Branch("_br_" + self.name, root=self, total_recall=False)
         return self._a_branch
 
     _a_tree = None
@@ -46,7 +41,7 @@ class Node (_AbstractObject):
         """The whole (!) Tree containing this node 
         (not just the branch starting here)"""
         if self._a_tree is None:
-            self._a_tree = trees.Tree((self.path + [self])[0])
+            self._a_tree = trees.Tree(self.path[0])
         return self._a_tree
 
     def __repr__(self):
@@ -164,7 +159,7 @@ class PossibilityNode (InnerNode):
         for v in self.successors:
             v._add_to_dot(dot)
             dot.edge(self._get_dotname(), v._get_dotname(),
-                     label=self.labels.get(v, ""))
+                     taillabel=self.labels.get(v, ""))
 
 PoN = PossibilityNode
 """Abbreviation for PossibilityNode"""
@@ -208,7 +203,7 @@ class ProbabilityNode (InnerNode):
         Node._add_to_dot(self, dot)
         for v, p in self.probabilities.items():
             v._add_to_dot(dot)
-            dot.edge(self._get_dotname(), v._get_dotname(), label=str(p))
+            dot.edge(self._get_dotname(), v._get_dotname(), taillabel=str(p))
 
 PrN = ProbabilityNode
 """Abbreviation for ProbabilityNode"""
@@ -248,23 +243,42 @@ class DecisionNode (InnerNode):
     def validate(self):
         assert isinstance(self.player, Player)
         assert isinstance(self.consequences, dict)
-        named_actions = self._a_named_actions = set(self.consequences.keys())
+        actions = self._a_actions = set(self.consequences.keys())
         self._i_successors = set(self.consequences.values())
-        assert len(named_actions) > 0, "decision node must have at least one action"
+        assert len(actions) > 0, "decision node must have at least one action"
         for action, node in self.consequences.items():
             assert isinstance(action, Action)
             assert isinstance(node, Node)
         if self._i_information_set is not None:
-            self._i_information_set.add_node(self)
+            ins = self._i_information_set
+            self._i_information_set = None
+            ins.add_node(self)
     
-    _a_named_actions = None
+    _a_actions = None
     @property
-    def named_actions(self): 
+    def actions(self): 
         """Set of possible Actions"""
-        if self._a_named_actions is None:
-            self.validate()
-        return self._a_named_actions
+        if self._a_actions is None:
+            self._a_actions = set(self.consequences.keys())
+        return self._a_actions
 
+    def get_action(self, successor):
+        """Get the action leading to a successor"""
+        for a, v in self.consequences.items():
+            if v == successor:
+                return a
+        return None
+        
+    @property
+    def choice_history(self):
+        """List of (InformationSet, Action) pairs from root to predecessor"""
+        hist = []
+        for pos, v in enumerate(self.path[:-1]):
+            if isinstance(v, DecisionNode) and v.player == self.player:
+                hist.append((v.information_set, v.get_action(self.path[pos+1])))
+        return hist
+        # Note: cannot be cached since it is mutable!
+        
     def _base_repr(self):
         return (Node.__repr__(self) 
                 + (" (" + self.information_set.name + ")" if len(self.information_set.nodes) > 1 else "")
@@ -295,7 +309,7 @@ class DecisionNode (InnerNode):
             Node._add_to_dot(self, dot)
         for a, v in self.consequences.items():
             v._add_to_dot(dot)
-            dot.edge(self._get_dotname(), v._get_dotname(), label=a.name)
+            dot.edge(self._get_dotname(), v._get_dotname(), taillabel=a.name)
 
 DeN = DecisionNode
 """Abbreviation for DecisionNode"""
@@ -354,7 +368,9 @@ class InformationSet (_AbstractObject):
 
     def add_node(self, node):
         if node not in self.nodes:
+            assert node._i_information_set is None, "node can only be in one information set" + str(node._i_information_set) + " " + str(self)
             self._i_nodes.append(node)
+            node._i_information_set = self
         self.validate()
         
     def validate(self):
@@ -364,7 +380,6 @@ class InformationSet (_AbstractObject):
             for node in self.nodes:
                 assert isinstance(node, DecisionNode), "nodes in information set must be DecisionNodes"
                 assert node.player == self._a_player, "all nodes in information set must belong to the same player"
-        # TODO: assert that all member nodes have the same choice history!
 
     _a_player = None
     @property
@@ -385,12 +400,6 @@ class InformationSet (_AbstractObject):
                 else:
                     assert self._a_actions == actions
         return self._a_actions
-
-    _a_choice_history = None
-    @property
-    def choice_history(self):
-        """List of (InformationSet, Action) pairs from root to predecessor"""
-        pass # TODO!
 
     def __contains__(self, node):
         return node in self._i_nodes

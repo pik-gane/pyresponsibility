@@ -34,6 +34,22 @@ class Branch (_AbstractObject):
     def root(self): 
         return self._i_root
     
+    def __init__(self, *args, total_recall=True, **kwargs):
+        super(Branch, self).__init__(*args, **kwargs)
+        if total_recall:
+            # assert that nodes in the same information set have the same choice_history:
+            for ins in self.get_information_sets():
+                if len(ins.nodes) > 1:
+                    hist = ins.nodes[0].choice_history
+                    for v in ins.nodes[1:]:
+                        if not v.choice_history == hist:
+                            print("nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history:")
+                            print(hist)
+                            print(v.choice_history)    
+                            print(ins.nodes[0].information_set)
+                            print(v.information_set)                
+#                            assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"
+        
     # properties holding dicts of named objects keyed by their name:
     
     _a_named_nodes = None
@@ -228,9 +244,9 @@ class Branch (_AbstractObject):
             # yield from concatenation of partial solutions of all successors,
             # each one enriched by the corresponding transition:
             if (consistently and isinstance(node, nd.DecisionNode)):
-                for action in node.actions:
+                for action, successor in node.consequences.items():
                     for transitions in self._get_transitions(
-                            node=node.consequences[action], include_types=include_types, exclude_types=exclude_types, 
+                            node=successor, include_types=include_types, exclude_types=exclude_types, 
                             include_group=include_group, exclude_group=exclude_group, consistently=consistently):
                         transitions[node.information_set] = action
                         yield transitions
@@ -353,8 +369,8 @@ class Branch (_AbstractObject):
             assert group is None
             group = Group("_", players={player})
         assert isinstance(group, Group)
-        assert isinstance(node, nd.DecisionNode)
-        assert node.player in group
+        assert isinstance(node, nd.DecisionNode), "start node of strategy must be a DecisionNode"
+        assert node.player in group, "node must belong to player or group"
         nodes = node.information_set.nodes
         # yield from cartesian product of strategies of all nodes in same information set:
         cartesian_product = itertools.product(*(
@@ -431,7 +447,7 @@ class Branch (_AbstractObject):
             if node in transitions:
                 successor = new_transitions.pop(node) 
                 return self._get_expectation(successor, new_transitions, attribute, resolve)
-            else:
+            elif isinstance(node, nd.DecisionNode):
                 ins = node.information_set
                 if ins in transitions:
                     successor = node.consequences[new_transitions.pop(ins)]
@@ -440,7 +456,7 @@ class Branch (_AbstractObject):
                     return resolve([self._get_expectation(successor, new_transitions, attribute, resolve)
                                     for successor in node.successors])
         else:
-            key = (node, frozenset(transitions.items()), attribute)
+            key = (node, frozenset(transitions.items()), attribute, resolve)
             try:
                 expectation = self._d_expectation[key]
                 self._n_used_cache += 1
@@ -533,7 +549,9 @@ class Branch (_AbstractObject):
         acceptable and inacceptable outcomes are upward- and downward-pointing triangles,
         information sets are dashed boxes.
         """
-        dot = gv.Digraph(comment=self.name, graph_attr={"rankdir": "LR"})
+        dot = gv.Digraph(comment=self.name, graph_attr={
+                "rankdir": "LR",
+                "labeldistance": "100.0"})
         with dot.subgraph(name="cluster_outcome_nodes", graph_attr={"style": "invis"}) as sub:
             for w in self.get_outcome_nodes():
                 nd.Node._add_to_dot(w, sub)

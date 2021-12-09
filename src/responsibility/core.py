@@ -96,8 +96,8 @@ def global_symbols(*names):
 
 def Min(values):
     return (sp.simplify(sp.Min(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
-            else min(*values))
+            else min(values))
 
 def Max(values):
     return (sp.simplify(sp.Max(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
-            else max(*values))
+            else max(values))

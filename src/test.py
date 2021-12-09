@@ -14,17 +14,17 @@ from responsibility import *
 #from responsibility.problems.repeated_public_good_2_of_3 import *
 
 #from responsibility.problems.threshold_public_good import *
-#T = threshold_public_good(4,2)
+#T = threshold_public_good(4, 2)
 
-T = random_tree(2, 20)
+T = random_tree(1, 100, total_recall=True)
 
-print(repr(T))
+#print(repr(T))
 
 T.draw("/tmp/test.pdf", show=True)
 
-T.make_globals()
+exit()
 
-print(T.named_players)
+T.make_globals()
 
 i=i1
 
@@ -53,7 +53,6 @@ st_iC = Strategy("iC", start=vi.information_set, ch={
 
 print(T.get_likelihood(T.root,sc_allD,Strategy("", start=vi.information_set, ch={}),resolve="max"))
 
-exit()
 
 start = time()
 dist = T.get_outcome_distribution(sc_jCkD, st_iC)
