@@ -3,7 +3,7 @@ from time import time
 from responsibility import *
 #from responsibility.problems.drsc_fig1a import T
 #from responsibility.problems.drsc_fig1b import T
-#from responsibility.problems.drsc_fig1c import T
+from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig1d import T
 #from responsibility.problems.drsc_fig2a import T
 #from responsibility.problems.drsc_fig2b import T
@@ -11,18 +11,29 @@ from responsibility import *
 #from responsibility.problems.drsc_fig5 import T
 #from responsibility.problems.qrpc_fig3 import T
 #from responsibility.problems.public_good_2_of_3 import *
-from responsibility.problems.threshold_public_good import *
 #from responsibility.problems.repeated_public_good_2_of_3 import *
 
-T = threshold_public_good(4,2)
+#from responsibility.problems.threshold_public_good import *
+#T = threshold_public_good(4,2)
 
 print(repr(T))
 
-#print(T.get_guaranteed_likelihood(T.root))
-T.draw("/tmp/test.pdf", show=True)
 
+T.make_globals()
+
+print(T.get_extreme(
+        "max", T.root, 
+        T.get_strategies(T.root, player=i),
+        lambda s: T.get_likelihood(T.root, strategy=s, resolve="min")))
+
+print(T.get_extreme(
+        "max", T.root, 
+        T.get_scenarios(T.root, player=i),
+        lambda s: T.get_likelihood(T.root, scenario=s, resolve="min")))
 exit()
 
+#print(T.get_guaranteed_likelihood(T.root))
+T.draw("/tmp/test.pdf", show=True)
 
 
 sc_allD = Scenario("allD", current_node=vi, tr={

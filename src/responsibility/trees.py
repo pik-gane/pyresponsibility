@@ -327,9 +327,21 @@ class Branch (_AbstractObject):
         
     # aggregation methods across scenarios and/or strategies:
         
-
-
-
+    def get_extreme(self, which=None, node=None, domain=None, function=None, args=()):
+        """Calculate the min or max of a function(partial_solution, *args)
+        over all partial_solutions in generator domain"""
+        # TODO: cache!
+        assert which in ["min", "max"]
+        assert isinstance(node, nd.Node)
+        assert hasattr(function, "__call__")
+        values = [function(s, *args) for s in domain]
+        if which == "min":
+            res = (sp.simplify(sp.Min(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
+                   else min(*values))            
+        elif which == "max":
+            res = (sp.simplify(sp.Max(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
+                   else max(*values))            
+        return res
 
     # outcome distributions:
         
@@ -383,7 +395,7 @@ class Branch (_AbstractObject):
         return distribution
 
     _d_expectation = {}
-    def _get_expectation(self, node=None, transitions=None, attribute=None):
+    def _get_expectation(self, node=None, transitions=None, attribute=None, resolve=None):
         """helper method"""
         if isinstance(node, nd.OutcomeNode):
             return getattr(node.outcome, attribute, 0)
@@ -391,9 +403,24 @@ class Branch (_AbstractObject):
             new_transitions = transitions.copy()
             if node in transitions:
                 successor = new_transitions.pop(node) 
+                return self._get_expectation(successor, new_transitions, attribute, resolve)
             else:
-                successor = node.consequences[new_transitions.pop(node.information_set)]
-            return self._get_expectation(successor, new_transitions, attribute)
+                ins = node.information_set
+                if ins in transitions:
+                    successor = node.consequences[new_transitions.pop(ins)]
+                    return self._get_expectation(successor, new_transitions, attribute, resolve)
+                elif resolve=="min":
+                    values = [self._get_expectation(successor, new_transitions, attribute, resolve)
+                              for successor in node.successors]
+                    return (sp.Min(*values) if np.any([isinstance(v, sp.Expr) for v in values])
+                            else min(*values))
+                elif resolve=="max":
+                    values = [self._get_expectation(successor, new_transitions, attribute, resolve)
+                              for successor in node.successors]
+                    return (sp.Max(*values) if np.any([isinstance(v, sp.Expr) for v in values])
+                            else max(*values))
+                else:
+                    assert 0==1
         else:
             key = (node, frozenset(transitions.items()), attribute)
             try:
@@ -404,26 +431,43 @@ class Branch (_AbstractObject):
                 self._n_not_used_cache += 1
                 expectation = 0
                 for successor, p1 in node.probabilities.items():
-                    expectation += p1 * self._get_expectation(successor, transitions, attribute)
+                    expectation += p1 * self._get_expectation(successor, transitions, attribute, resolve)
                 self._d_expectation[key] = expectation
                 return expectation
     
-    def get_expectation(self, node=None, scenario=None, strategy=None, attribute=None):
-        """Calculate the expectation value of some outcome attribute
+    def get_expectation(self, node=None, scenario=None, strategy=None, attribute=None, resolve=None):
+        """Calculate the (min or max) expectation value of some outcome attribute
         conditional on being in the branch's root node and assuming a certain scenario and strategy.
         @param attribute: name of the outcome attribute
+        @param resolve: whether to use the "min" or "max" expectation over those
+               decision and possiblity nodes not resolved by scenario and strategy
         If the outcome lacks the attribute, a zero value is assumed.
         """
         assert isinstance(node, nd.Node)
-        assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
-        assert isinstance(strategy, Strategy) and node in strategy.start
         assert isinstance(attribute, str)
-        transitions = {**scenario.transitions}
-        for S, act in strategy.choices.items():
-            assert S not in transitions, "scenario and strategy must not overlap"
-            transitions[S] = act
-        expectation = self._get_expectation(node=scenario.current_node, transitions=transitions, attribute=attribute)
-        return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
+        if scenario is not None:
+            assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
+            transitions = {**scenario.transitions}
+            if strategy is not None:
+                assert isinstance(strategy, Strategy) and node in strategy.start
+                for S, act in strategy.choices.items():
+                    assert S not in transitions, "scenario and strategy must not overlap"
+                    transitions[S] = act
+            expectation = self._get_expectation(scenario.current_node, transitions, attribute, resolve)
+            return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
+        else:
+            # take min or max over nodes in information set:
+            values = [self._get_expectation(node, Scenario("", current_node=c, transitions={}), 
+                                            strategy, attribute, resolve)
+                      for c in node.information_set.nodes]
+            if resolve == "min":
+                return (sp.simplify(sp.Min(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
+                        else min(*values))            
+            elif resolve == "max":
+                return (sp.simplify(sp.Max(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
+                        else max(*values))            
+            else:
+                assert 0==1
         
     _d_likelihood = {}
     def _get_likelihood(self, node=None, transitions=None, is_acceptable=False, resolve=None):
@@ -437,8 +481,8 @@ class Branch (_AbstractObject):
                 return self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
             else:
                 ins = node.information_set
-                if ins in node.consequences:
-                    successor = node.consequences[new_transitions.pop(node.information_set)]
+                if ins in transitions:
+                    successor = node.consequences[new_transitions.pop(ins)]
                     return self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
                 elif resolve=="min":
                     values = [self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
@@ -467,21 +511,38 @@ class Branch (_AbstractObject):
                 return likelihood
     
     def get_likelihood(self, node=None, scenario=None, strategy=None, is_acceptable=False, resolve=None):
-        """Calculate the probability of an unacceptable (or acceptable) outcome
+        """Calculate the (min or max) probability of an unacceptable (or acceptable) outcome
         conditional on being in the branch's root node and assuming a certain scenario and strategy.
         @param is_acceptable: whether the probability of unacceptable (False) or acceptable (True)
                outcomes is sought (default: False)
+        @param resolve: whether to use the "min" or "max" probability over those
+               decision and possiblity nodes not resolved by scenario and strategy
         """
         assert isinstance(node, nd.Node)
-        assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
-        assert isinstance(strategy, Strategy) and node in strategy.start
         assert isinstance(is_acceptable, bool)
-        transitions = {**scenario.transitions}
-        for S, act in strategy.choices.items():
-            assert S not in transitions, "scenario and strategy must not overlap"
-            transitions[S] = act
-        likelihood = self._get_likelihood(scenario.current_node, transitions, is_acceptable, resolve)
-        return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
+        if scenario is not None:
+            assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
+            transitions = {**scenario.transitions}
+            if strategy is not None:
+                assert isinstance(strategy, Strategy) and node in strategy.start
+                for S, act in strategy.choices.items():
+                    assert S not in transitions, "scenario and strategy must not overlap"
+                    transitions[S] = act
+            likelihood = self._get_likelihood(scenario.current_node, transitions, is_acceptable, resolve)
+            return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
+        else:
+            # take min or max over nodes in information set:
+            values = [self.get_likelihood(node, Scenario("", current_node=c, transitions={}), 
+                                          strategy, is_acceptable, resolve)
+                      for c in node.information_set.nodes]
+            if resolve == "min":
+                return (sp.simplify(sp.Min(*values)) if np.any([isinstance(l, sp.Expr) for l in values])
+                        else min(*values))            
+            elif resolve == "max":
+                return (sp.simplify(sp.Max(*values)) if np.any([isinstance(l, sp.Expr) for l in values])
+                        else max(*values))            
+            else:
+                assert 0==1
     
     def get_guaranteed_likelihood(self, node, is_acceptable=False):
         """Calculate the known guaranteed likelihood (minimum likelihood over
