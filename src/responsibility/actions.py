@@ -11,7 +11,7 @@ class Action (_AbstractObject):
 Ac = Action
 """Abbreviation for Action"""
 
-def actions(*names):
+def named_actions(*names):
     """Return an Action for each name listed as an argument"""
     return (Action(name) for name in names)
     
@@ -20,7 +20,7 @@ def global_actions(*names):
     and store it in a global variable of the same name"""
     module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
     module = sys.modules[module_name]
-    for a in actions(*names):
+    for a in named_actions(*names):
         n = a.name
         if getattr(module, n, a) != a:
             print("Warning: global var", n, "existed, did not overwrite it.")

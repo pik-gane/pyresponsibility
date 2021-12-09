@@ -11,6 +11,20 @@ class Outcome (_AbstractObject):
         """bool"""
         return self._i_is_acceptable
 
+    def __init__(self, name, **kwargs):
+        self._a_nodes = set()
+        super(Outcome, self).__init__(name, **kwargs)
+
+    _a_nodes = None
+    @property
+    def nodes(self):
+        """Set of DecisionNodes, each having its information_set=this"""
+        return self._a_nodes
+
+    def add_node(self, node):
+        self._a_nodes.add(node)
+        self.validate()
+        
     def validate(self):
         assert isinstance(self.is_acceptable, bool)
 

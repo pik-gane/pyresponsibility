@@ -215,7 +215,7 @@ PrN = ProbabilityNode
 
 
 class DecisionNode (InnerNode):
-    """A node representing a choice of exactly one of several possible actions
+    """A node representing a choice of exactly one of several possible named_actions
     to made by some player.
     @param player: the acting Player
     @param consequences: dict of successor Node keyed by Action
@@ -248,22 +248,22 @@ class DecisionNode (InnerNode):
     def validate(self):
         assert isinstance(self.player, Player)
         assert isinstance(self.consequences, dict)
-        actions = self._a_actions = set(self.consequences.keys())
+        named_actions = self._a_named_actions = set(self.consequences.keys())
         self._i_successors = set(self.consequences.values())
-        assert len(actions) > 0, "decision node must have at least one action"
+        assert len(named_actions) > 0, "decision node must have at least one action"
         for action, node in self.consequences.items():
             assert isinstance(action, Action)
             assert isinstance(node, Node)
         if self._i_information_set is not None:
             self._i_information_set.add_node(self)
     
-    _a_actions = None
+    _a_named_actions = None
     @property
-    def actions(self): 
+    def named_actions(self): 
         """Set of possible Actions"""
-        if self._a_actions is None:
+        if self._a_named_actions is None:
             self.validate()
-        return self._a_actions
+        return self._a_named_actions
 
     def _base_repr(self):
         return (Node.__repr__(self) 
@@ -314,6 +314,7 @@ class OutcomeNode (LeafNode):
 
     def validate(self):
         assert isinstance(self.outcome, Outcome)
+        self.outcome.add_node(self)
 
     def __repr__(self):
         return Node.__repr__(self) + ": " + repr(self.outcome)
@@ -337,7 +338,7 @@ class InformationSet (_AbstractObject):
     which the player cannot distinguish from their information when in one of 
     these DecisionNodes. 
     @param nodes: set of DecisionNodes belonging to this information set.
-    All these nodes must have the exact same set of possible actions for the
+    All these nodes must have the exact same set of possible named_actions for the
     player.
     """
     

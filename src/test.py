@@ -34,10 +34,10 @@ T.draw("/tmp/test.pdf", show=True)
 
 
 sc_allD = Scenario("allD", current_node=vi, tr={
-    S: D for S in T.information_sets.values() if S.player != i
+    S: D for S in T.named_information_sets.values() if S.player != i
 })
 sc_jCkD = Scenario("jCkD", current_node=vi, tr={
-    S: (C if S.player == j else D) for S in T.information_sets.values() if S.player != i
+    S: (C if S.player == j else D) for S in T.named_information_sets.values() if S.player != i
 })
 st_iC = Strategy("iC", start=vi.information_set, ch={
     S: C for S in T.get_information_sets(i).values()
@@ -75,18 +75,18 @@ T.make_globals()
 
 print()
 
-print(T.nodes)
-print(T.players)
-print(T.outcomes)
-print(T.actions)
-print(T.inner_nodes)
-print(T.leaf_nodes)
-print(T.possibility_nodes)
-print(T.probability_nodes)
-print(T.decision_nodes)
-print(T.information_sets)
+print(T.named_nodes)
+print(T.named_players)
+print(T.named_outcomes)
+print(T.named_actions)
+print(T.named_inner_nodes)
+print(T.named_leaf_nodes)
+print(T.named_possibility_nodes)
+print(T.named_probability_nodes)
+print(T.named_decision_nodes)
+print(T.named_information_sets)
 
-#print(v4_unknown_warming.information_set.nodes)
+#print(v4_unknown_warming.information_set.named_nodes)
 #print(w14_cooling_knowingly_prevented.history)
 
 

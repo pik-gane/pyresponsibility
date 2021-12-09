@@ -14,21 +14,21 @@ Pl = Player
 """Abbreviation for Player"""
 
 class Group (_AbstractObject):
-    """Represents any subset of the set of players"""
+    """Represents any subset of the set of named_players"""
 
     _i_players = None
     @property
-    def players(self):
+    def named_players(self):
         """Set of member Players"""
         return self._i_players
     
     def validate(self):
-        assert isinstance(self.players, frozenset)
-        for player in self.players:
+        assert isinstance(self.named_players, frozenset)
+        for player in self.named_players:
             assert isinstance(player, Player), "group must be set of Players"
             
     def __contains__(self, player):
-        return player in self.players
+        return player in self.named_players
         
     def __repr__(self):
         return self.name if hasname(self) else "{*}"
@@ -36,7 +36,7 @@ class Group (_AbstractObject):
 Gr = Group
 """Abbreviation for Group"""
 
-def players(*names):
+def named_players(*names):
     """Return a Player for each name listed as an argument"""
     return tuple(Player(name) for name in names)
     
@@ -45,7 +45,7 @@ def global_players(*names):
     and store it in a global variable of the same name"""
     module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
     module = sys.modules[module_name]
-    for pl in players(*names):
+    for pl in named_players(*names):
         n = pl.name
         if getattr(module, n, pl) != pl:
             print("Warning: global var", n, "existed, did not overwrite it.")
