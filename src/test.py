@@ -3,7 +3,7 @@ from time import time
 from responsibility import *
 #from responsibility.problems.drsc_fig1a import T
 #from responsibility.problems.drsc_fig1b import T
-from responsibility.problems.drsc_fig1c import T
+#from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig1d import T
 #from responsibility.problems.drsc_fig2a import T
 #from responsibility.problems.drsc_fig2b import T
@@ -16,16 +16,24 @@ from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.threshold_public_good import *
 #T = threshold_public_good(4,2)
 
+T = random_tree(2, 20)
+
 print(repr(T))
 
+T.draw("/tmp/test.pdf", show=True)
 
 T.make_globals()
 
-print(Max(T.get_likelihood(T.root, strategy=s, resolve=Min) for s in T.get_strategies(T.root, player=i)))
+print(T.named_players)
 
-print(Max(T.get_likelihood(T.root, scenario=s, resolve=Min) for s in T.get_scenarios(T.root, player=i)))
+i=i1
+
+print(Max([T.get_likelihood(T.root, strategy=s, resolve=Min) for s in T.get_strategies(T.root, player=i)]))
+
+print(Max([T.get_likelihood(T.root, scenario=s, resolve=Min) for s in T.get_scenarios(T.root, player=i)]))
 
 print(T.get_guaranteed_likelihood(T.root))
+
 
 exit()
 

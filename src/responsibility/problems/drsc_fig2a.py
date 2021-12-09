@@ -25,8 +25,7 @@ heat = Ac("heat")
 dont_heat = Ac("dont_heat")
 
 climate_ok = Ou("climate_ok", ac=True)
-too_warm = Ou("too_warm", ac=False)
-too_cold = Ou("too_cold", ac=False)
+too_warm, too_cold = outcomes("too_warm", "too_cold", is_acceptable=False)
 
 unknown_risk = InS("unknown_risk")
 

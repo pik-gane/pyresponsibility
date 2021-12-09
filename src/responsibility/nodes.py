@@ -323,10 +323,7 @@ class OutcomeNode (LeafNode):
         return "\n" + pre1 + repr(self)
 
     def _add_to_dot(self, dot):
-        Node._add_to_dot(self, dot)
-        o = self.outcome
-        dot.node(o.name, shape="triangle" if o.is_acceptable else "invtriangle")
-        dot.edge(self._get_dotname(), o.name, dir="none")
+        dot.edge(self._get_dotname(), self.outcome.name, dir="none")
 
         
 OuN = OutcomeNode
@@ -349,18 +346,19 @@ class InformationSet (_AbstractObject):
         return self._i_nodes
 
     def __init__(self, name, **kwargs):
-        self._i_nodes = set()
+        self._i_nodes = []
         super(InformationSet, self).__init__(name, **kwargs)
         for node in self.nodes:
             assert node._i_information_set is None, "node can only be in one information set"
             node._i_information_set = self
 
     def add_node(self, node):
-        self._i_nodes.add(node)
+        if node not in self.nodes:
+            self._i_nodes.append(node)
         self.validate()
         
     def validate(self):
-        assert isinstance(self.nodes, (set, frozenset)), "information set must be a (frozen)set of DecisionNodes"
+        self._i_nodes = list(self.nodes) 
         if len(self.nodes) > 0:
             self._a_player = list(self.nodes)[0].player
             for node in self.nodes:

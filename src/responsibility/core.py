@@ -94,20 +94,10 @@ def global_symbols(*names):
         else:
             setattr(module, n, s)
 
-def Min(*args):
-    if isinstance(args[0], (list, types.GeneratorType)):
-        assert len(args)==1
-        values = [*args[0]]
-    else:
-        values = [*args]
+def Min(values):
     return (sp.simplify(sp.Min(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
             else min(*values))
 
-def Max(*args):
-    if isinstance(args[0], (list, types.GeneratorType)):
-        assert len(args)==1
-        values = [*args[0]]
-    else:
-        values = [*args]
+def Max(values):
     return (sp.simplify(sp.Max(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
             else max(*values))

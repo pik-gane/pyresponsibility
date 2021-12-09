@@ -24,7 +24,7 @@ class Branch (_AbstractObject):
            (not necessarily the root of the whole tree)
            
     This class also provides many methods to be used in responsibility calculations,
-    e.g. to find all named_players, named_outcomes, named_nodes, or information sets occurring in
+    e.g. to find all players, outcomes, nodes, or information sets occurring in
     this branch, find all scenarios or strategies starting at the branch's root node,
     or to find the outcome distribution resulting from a scenario-strategy pair.
     """
@@ -39,7 +39,7 @@ class Branch (_AbstractObject):
     _a_named_nodes = None
     @property
     def named_nodes(self):
-        """dict of named named_nodes keyed by name"""
+        """dict of named nodes keyed by name"""
         if self._a_named_nodes is None:
             self._a_named_nodes = {self.root.name: self.root} if hasname(self.root) else {} 
             if hasattr(self.root, 'successors'):
@@ -47,28 +47,6 @@ class Branch (_AbstractObject):
                     self._a_named_nodes.update(v.branch.named_nodes)
         return self._a_named_nodes
 
-    _a_named_players = None
-    @property
-    def named_players(self):
-        """dict of named named_players keyed by name"""
-        if self._a_named_players is None:
-            self._a_named_players = {
-                v.player.name: v.player 
-                for v in self.named_nodes.values() 
-                if hasattr(v, "player") and hasname(v.player)}
-        return self._a_named_players
-    
-    _a_named_outcomes = None
-    @property
-    def named_outcomes(self):
-        """dict of named named_outcomes keyed by name"""
-        if self._a_named_outcomes is None:
-            self._a_named_outcomes = {
-                v.outcome.name: v.outcome 
-                for v in self.named_nodes.values() 
-                if hasattr(v, "outcome") and hasname(v.outcome)}
-        return self._a_named_outcomes
-        
     _a_named_inner_nodes = None
     @property
     def named_inner_nodes(self):
@@ -105,17 +83,28 @@ class Branch (_AbstractObject):
                 if isinstance(v, nd.DecisionNode)} 
         return self._a_named_decision_nodes
 
-    _a_named_information_sets = None
+    _a_named_players = None
     @property
-    def named_information_sets(self):
-        """dict of named named_information_sets keyed by name"""
-        if self._a_named_information_sets is None:
-            self._a_named_information_sets = {
-                v.information_set.name: v.information_set
-                for v in self.named_decision_nodes.values()
-                if hasname(v.information_set)} 
-        return self._a_named_information_sets
-
+    def named_players(self):
+        """dict of named named_players keyed by name"""
+        if self._a_named_players is None:
+            self._a_named_players = {
+                v.player.name: v.player 
+                for v in self.get_nodes() 
+                if hasattr(v, "player") and hasname(v.player)}
+        return self._a_named_players
+    
+    _a_named_outcomes = None
+    @property
+    def named_outcomes(self):
+        """dict of named named_outcomes keyed by name"""
+        if self._a_named_outcomes is None:
+            self._a_named_outcomes = {
+                v.outcome.name: v.outcome 
+                for v in self.get_nodes() 
+                if hasattr(v, "outcome") and hasname(v.outcome)}
+        return self._a_named_outcomes
+        
     _a_named_leaf_nodes = None
     @property
     def named_leaf_nodes(self):
@@ -133,6 +122,17 @@ class Branch (_AbstractObject):
                 for n, v in self.named_nodes.items() 
                 if isinstance(v, nd.OutcomeNode)} 
         return self._a_named_outcome_nodes
+
+    _a_named_information_sets = None
+    @property
+    def named_information_sets(self):
+        """dict of named named_information_sets keyed by name"""
+        if self._a_named_information_sets is None:
+            self._a_named_information_sets = {
+                v.information_set.name: v.information_set
+                for v in self.named_decision_nodes.values()
+                if hasname(v.information_set)} 
+        return self._a_named_information_sets
 
     _a_named_actions = None
     @property
@@ -228,7 +228,7 @@ class Branch (_AbstractObject):
             # yield from concatenation of partial solutions of all successors,
             # each one enriched by the corresponding transition:
             if (consistently and isinstance(node, nd.DecisionNode)):
-                for action in node.named_actions:
+                for action in node.actions:
                     for transitions in self._get_transitions(
                             node=node.consequences[action], include_types=include_types, exclude_types=exclude_types, 
                             include_group=include_group, exclude_group=exclude_group, consistently=consistently):
@@ -305,7 +305,7 @@ class Branch (_AbstractObject):
         assert isinstance(group, Group)
         if isinstance(node, nd.DecisionNode):
             assert node.player in group
-            # yield from concatenation of scenarios of all named_nodes in same information set:
+            # yield from concatenation of scenarios of all nodes in same information set:
             nodes = node.information_set.nodes
         else:
             nodes = {node}
@@ -321,8 +321,8 @@ class Branch (_AbstractObject):
         if isinstance(node, nd.DecisionNode) and node.player in group:
             # yield from concatenation of partial strategies at all successors,
             # each one enriched by the corresponding choice:
-            for action in node.named_actions:
-                for choices in self._get_choices(node=node.consequences[action], group=group):
+            for action, successor in node.consequences.items():
+                for choices in self._get_choices(node=successor, group=group):
                     choices[node.information_set] = action
                     yield choices
         elif isinstance(node, nd.InnerNode):
@@ -353,12 +353,10 @@ class Branch (_AbstractObject):
             assert group is None
             group = Group("_", players={player})
         assert isinstance(group, Group)
-        if isinstance(node, nd.DecisionNode):
-            assert node.player in group
-            # yield from cartesian product of strategies of all named_nodes in same information set:
-            nodes = node.information_set.nodes
-        else:
-            nodes = {node}
+        assert isinstance(node, nd.DecisionNode)
+        assert node.player in group
+        nodes = node.information_set.nodes
+        # yield from cartesian product of strategies of all nodes in same information set:
         cartesian_product = itertools.product(*(
             self._get_choices(node=v, group=group)
             for v in nodes))
@@ -406,7 +404,7 @@ class Branch (_AbstractObject):
                 return distribution
             
     def get_outcome_distribution(self, node=None, scenario=None, strategy=None):
-        """Returns the probability of named_outcomes resulting from a given
+        """Returns the probability of outcomes resulting from a given
         scenario and strategy.
         @return: dict of probability keyed by Outcome
         """
@@ -439,8 +437,8 @@ class Branch (_AbstractObject):
                     successor = node.consequences[new_transitions.pop(ins)]
                     return self._get_expectation(successor, new_transitions, attribute, resolve)
                 else:
-                    return resolve(self._get_expectation(successor, new_transitions, attribute, resolve)
-                                   for successor in node.successors)
+                    return resolve([self._get_expectation(successor, new_transitions, attribute, resolve)
+                                    for successor in node.successors])
         else:
             key = (node, frozenset(transitions.items()), attribute)
             try:
@@ -460,7 +458,7 @@ class Branch (_AbstractObject):
         conditional on being in the branch's root node and assuming a certain scenario and strategy.
         @param attribute: name of the outcome attribute
         @param resolve: whether to use the Min or Max expectation over those
-               decision and possiblity named_nodes not resolved by scenario and strategy
+               decision and possiblity nodes not resolved by scenario and strategy
         If the outcome lacks the attribute, a zero value is assumed.
         """
         assert isinstance(node, nd.Node)
@@ -476,18 +474,18 @@ class Branch (_AbstractObject):
             expectation = self._get_expectation(scenario.current_node, transitions, attribute, resolve)
             return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
         else:
-            # take min or max over named_nodes in information set:
-            return resolve(self._get_expectation(node, Scenario("", current_node=c, transitions={}), 
-                                                 strategy, attribute, resolve)
-                           for c in node.information_set.named_nodes)
+            # take min or max over nodes in information set:
+            return resolve([self._get_expectation(node, Scenario("", current_node=c, transitions={}), 
+                                                  strategy, attribute, resolve)
+                            for c in node.information_set.nodes])
         
     def get_likelihood(self, node=None, scenario=None, strategy=None, is_acceptable=False, resolve=None):
         """Calculate the (min or max) probability of an unacceptable (or acceptable) outcome
         conditional on being in the branch's root node and assuming a certain scenario and strategy.
         @param is_acceptable: whether the probability of unacceptable (False) or acceptable (True)
-               named_outcomes is sought (default: False)
+               outcomes is sought (default: False)
         @param resolve: whether to use the Min or Max probability over those
-               decision and possiblity named_nodes not resolved by scenario and strategy
+               decision and possibility nodes not resolved by scenario and strategy
         """
         assert isinstance(node, nd.Node)
         assert isinstance(is_acceptable, bool)
@@ -502,10 +500,10 @@ class Branch (_AbstractObject):
             likelihood = self._get_expectation(scenario.current_node, transitions, None, resolve)
             return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
         else:
-            # take min or max over named_nodes in information set:
-            return resolve(self.get_likelihood(node, Scenario("", current_node=c, transitions={}), 
-                                               strategy, is_acceptable, resolve)
-                           for c in node.information_set.nodes)
+            # take min or max over nodes in information set:
+            return resolve([self.get_likelihood(node, Scenario("", current_node=c, transitions={}), 
+                                                strategy, is_acceptable, resolve)
+                            for c in node.information_set.nodes])
     
     def get_guaranteed_likelihood(self, node):
         """Calculate the known guaranteed likelihood (minimum likelihood over
@@ -519,26 +517,31 @@ class Branch (_AbstractObject):
         Each node is one line, connected by lines indicating successor relationships.
         Actions and probabilities are named right before the node they lead to.
         Non-singleton information sets are named in parentheses after node names.
-        Players of decision named_nodes and named_outcomes of outcome named_nodes are named after a colon after node names.
-        Acceptable named_outcomes are marked by a check mark, inacceptable ones by a cross.
-        Unnamed named_nodes are represented by a bullet. 
+        Players of decision nodes and outcomes of outcome nodes are named after a colon after node names.
+        Acceptable outcomes are marked by a check mark, inacceptable ones by a cross.
+        Unnamed nodes are represented by a bullet. 
         @return: str (multiline)
         """
         return self.name + ":" + self.root._to_lines("", "")
 
     def draw(self, filename, show=False):
         """Draw the tree using graphviz and potentially show it.
-        Possibility named_nodes are diamonds with optionally labeled outgoing arrows, 
-        decision named_nodes are diamonds with player names and arrows labeled by named_actions,
-        probability named_nodes are squares with arrows labeled by probabilities,
-        outcome named_nodes are circles,
-        acceptable and inacceptable named_outcomes are upward- and downward-pointing triangles,
+        Possibility nodes are diamonds with optionally labeled outgoing arrows, 
+        decision nodes are diamonds with player names and arrows labeled by actions,
+        probability nodes are squares with arrows labeled by probabilities,
+        outcome nodes are circles,
+        acceptable and inacceptable outcomes are upward- and downward-pointing triangles,
         information sets are dashed boxes.
         """
         dot = gv.Digraph(comment=self.name, graph_attr={"rankdir": "LR"})
+        with dot.subgraph(name="cluster_outcome_nodes", graph_attr={"style": "invis"}) as sub:
+            for w in self.get_outcome_nodes():
+                nd.Node._add_to_dot(w, sub)
+        with dot.subgraph(name="cluster_outcomes", graph_attr={"style": "invis"}) as sub:
+            for ou in self.get_outcomes():
+                sub.node(ou.name, shape="triangle" if ou.is_acceptable else "invtriangle")
         self.root._add_to_dot(dot)
         dot.render(outfile=filename, view=show)
-
 
 class Tree (Branch):
     """Represents the whole tree (=the branch starting at the tree's root node)"""
