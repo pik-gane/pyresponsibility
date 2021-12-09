@@ -7,7 +7,7 @@ try:
 except:
     print("Branch.draw() unavailable since graphviz python package is not available")
 
-from .core import _AbstractObject, hasname, update_consistently, profile
+from .core import _AbstractObject, hasname, update_consistently, profile, Max, Min
 from .players import Group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes as nd
@@ -325,24 +325,6 @@ class Branch (_AbstractObject):
             if is_consistent: 
                 yield Strategy("_", start=node.information_set, choices=choices)
         
-    # aggregation methods across scenarios and/or strategies:
-        
-    def get_extreme(self, which=None, node=None, domain=None, function=None, args=()):
-        """Calculate the min or max of a function(partial_solution, *args)
-        over all partial_solutions in generator domain"""
-        # TODO: cache!
-        assert which in ["min", "max"]
-        assert isinstance(node, nd.Node)
-        assert hasattr(function, "__call__")
-        values = [function(s, *args) for s in domain]
-        if which == "min":
-            res = (sp.simplify(sp.Min(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
-                   else min(*values))            
-        elif which == "max":
-            res = (sp.simplify(sp.Max(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
-                   else max(*values))            
-        return res
-
     # outcome distributions:
         
     _n_not_used_cache = 0
@@ -398,7 +380,7 @@ class Branch (_AbstractObject):
     def _get_expectation(self, node=None, transitions=None, attribute=None, resolve=None):
         """helper method"""
         if isinstance(node, nd.OutcomeNode):
-            return getattr(node.outcome, attribute, 0)
+            return (0 if node.outcome.is_acceptable else 1) if attribute is None else getattr(node.outcome, attribute, 0)
         elif not isinstance(node, nd.ProbabilityNode):
             new_transitions = transitions.copy()
             if node in transitions:
@@ -409,18 +391,9 @@ class Branch (_AbstractObject):
                 if ins in transitions:
                     successor = node.consequences[new_transitions.pop(ins)]
                     return self._get_expectation(successor, new_transitions, attribute, resolve)
-                elif resolve=="min":
-                    values = [self._get_expectation(successor, new_transitions, attribute, resolve)
-                              for successor in node.successors]
-                    return (sp.Min(*values) if np.any([isinstance(v, sp.Expr) for v in values])
-                            else min(*values))
-                elif resolve=="max":
-                    values = [self._get_expectation(successor, new_transitions, attribute, resolve)
-                              for successor in node.successors]
-                    return (sp.Max(*values) if np.any([isinstance(v, sp.Expr) for v in values])
-                            else max(*values))
                 else:
-                    assert 0==1
+                    return resolve(self._get_expectation(successor, new_transitions, attribute, resolve)
+                                   for successor in node.successors)
         else:
             key = (node, frozenset(transitions.items()), attribute)
             try:
@@ -439,7 +412,7 @@ class Branch (_AbstractObject):
         """Calculate the (min or max) expectation value of some outcome attribute
         conditional on being in the branch's root node and assuming a certain scenario and strategy.
         @param attribute: name of the outcome attribute
-        @param resolve: whether to use the "min" or "max" expectation over those
+        @param resolve: whether to use the Min or Max expectation over those
                decision and possiblity nodes not resolved by scenario and strategy
         If the outcome lacks the attribute, a zero value is assumed.
         """
@@ -457,65 +430,16 @@ class Branch (_AbstractObject):
             return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
         else:
             # take min or max over nodes in information set:
-            values = [self._get_expectation(node, Scenario("", current_node=c, transitions={}), 
-                                            strategy, attribute, resolve)
-                      for c in node.information_set.nodes]
-            if resolve == "min":
-                return (sp.simplify(sp.Min(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
-                        else min(*values))            
-            elif resolve == "max":
-                return (sp.simplify(sp.Max(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
-                        else max(*values))            
-            else:
-                assert 0==1
+            return resolve(self._get_expectation(node, Scenario("", current_node=c, transitions={}), 
+                                                 strategy, attribute, resolve)
+                           for c in node.information_set.nodes)
         
-    _d_likelihood = {}
-    def _get_likelihood(self, node=None, transitions=None, is_acceptable=False, resolve=None):
-        """helper method"""
-        if isinstance(node, nd.OutcomeNode):
-            return 1 if node.outcome.is_acceptable == is_acceptable else 0
-        elif not isinstance(node, nd.ProbabilityNode):
-            new_transitions = transitions.copy()
-            if node in transitions:
-                successor = new_transitions.pop(node) 
-                return self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
-            else:
-                ins = node.information_set
-                if ins in transitions:
-                    successor = node.consequences[new_transitions.pop(ins)]
-                    return self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
-                elif resolve=="min":
-                    values = [self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
-                              for successor in node.successors]
-                    return (sp.Min(*values) if np.any([isinstance(l, sp.Expr) for l in values])
-                            else min(*values))
-                elif resolve=="max":
-                    values = [self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
-                              for successor in node.successors]
-                    return (sp.Max(*values) if np.any([isinstance(l, sp.Expr) for l in values])
-                            else max(*values))
-                else:
-                    assert 0==1
-        else:
-            key = (node, frozenset(transitions.items()), is_acceptable)
-            try:
-                likelihood = self._d_likelihood[key]
-                self._n_used_cache += 1
-                return likelihood
-            except:
-                self._n_not_used_cache += 1
-                likelihood = 0
-                for successor, p1 in node.probabilities.items():
-                    likelihood += p1 * self._get_likelihood(successor, transitions, is_acceptable, resolve)
-                self._d_likelihood[key] = likelihood
-                return likelihood
-    
     def get_likelihood(self, node=None, scenario=None, strategy=None, is_acceptable=False, resolve=None):
         """Calculate the (min or max) probability of an unacceptable (or acceptable) outcome
         conditional on being in the branch's root node and assuming a certain scenario and strategy.
         @param is_acceptable: whether the probability of unacceptable (False) or acceptable (True)
                outcomes is sought (default: False)
-        @param resolve: whether to use the "min" or "max" probability over those
+        @param resolve: whether to use the Min or Max probability over those
                decision and possiblity nodes not resolved by scenario and strategy
         """
         assert isinstance(node, nd.Node)
@@ -528,34 +452,18 @@ class Branch (_AbstractObject):
                 for S, act in strategy.choices.items():
                     assert S not in transitions, "scenario and strategy must not overlap"
                     transitions[S] = act
-            likelihood = self._get_likelihood(scenario.current_node, transitions, is_acceptable, resolve)
+            likelihood = self._get_expectation(scenario.current_node, transitions, None, resolve)
             return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
         else:
             # take min or max over nodes in information set:
-            values = [self.get_likelihood(node, Scenario("", current_node=c, transitions={}), 
-                                          strategy, is_acceptable, resolve)
-                      for c in node.information_set.nodes]
-            if resolve == "min":
-                return (sp.simplify(sp.Min(*values)) if np.any([isinstance(l, sp.Expr) for l in values])
-                        else min(*values))            
-            elif resolve == "max":
-                return (sp.simplify(sp.Max(*values)) if np.any([isinstance(l, sp.Expr) for l in values])
-                        else max(*values))            
-            else:
-                assert 0==1
+            return resolve(self.get_likelihood(node, Scenario("", current_node=c, transitions={}), 
+                                               strategy, is_acceptable, resolve)
+                           for c in node.information_set.nodes)
     
-    def get_guaranteed_likelihood(self, node, is_acceptable=False):
+    def get_guaranteed_likelihood(self, node):
         """Calculate the known guaranteed likelihood (minimum likelihood over
-        all scenario and strategies, called gamma in AAFRA"""
-        assert isinstance(node, nd.DecisionNode)
-        gamma = None
-        for strategy in self.get_strategies(node, player=node.player):
-            for scenario in self.get_scenarios(node, player=node.player):
-                l = self.get_likelihood(node, scenario, strategy, is_acceptable)
-                gamma = (l if gamma is None 
-                         else sp.Min(gamma, l) if isinstance(gamma, sp.Expr) or isinstance(l, sp.Expr) 
-                         else min(gamma, l))
-        return sp.simplify(gamma) if isinstance(gamma, sp.Expr) else gamma
+        all scenario and strategies) of an unacceptable outcome, called gamma in AAFRA"""
+        return self.get_likelihood(node, scenario=None, strategy=None, resolve=Min)
 
     # other methods_
 

@@ -21,15 +21,12 @@ print(repr(T))
 
 T.make_globals()
 
-print(T.get_extreme(
-        "max", T.root, 
-        T.get_strategies(T.root, player=i),
-        lambda s: T.get_likelihood(T.root, strategy=s, resolve="min")))
+print(Max(T.get_likelihood(T.root, strategy=s, resolve=Min) for s in T.get_strategies(T.root, player=i)))
 
-print(T.get_extreme(
-        "max", T.root, 
-        T.get_scenarios(T.root, player=i),
-        lambda s: T.get_likelihood(T.root, scenario=s, resolve="min")))
+print(Max(T.get_likelihood(T.root, scenario=s, resolve=Min) for s in T.get_scenarios(T.root, player=i)))
+
+print(T.get_guaranteed_likelihood(T.root))
+
 exit()
 
 #print(T.get_guaranteed_likelihood(T.root))
