@@ -29,6 +29,7 @@ from responsibility.brfs.aafra import *
 G = Group("", players={i})
 print(r_like(tree=T, group=G, node=v1, action=dont))
 print(r_risk(tree=T, group=G, node=v1, action=dont))
+print(r_negl(tree=T, group=G, node=v1, action=dont))
 
 exit()
 

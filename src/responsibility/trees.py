@@ -566,6 +566,26 @@ class Branch (_AbstractObject):
 
     omega = get_optimal_avoidance_likelihood
     
+    def Delta_omega(self, node=None, scenario=None, action=None):
+        """Shortfall in minimizing likelihood: by how much has the minimally 
+        achievable likelihood in the given scenario increased from this node 
+        to the next due to taking the given action? See AAFRA""" 
+        return (self.omega(node=node.consequences[action], 
+                           scenario=scenario.sub_scenario(action)) 
+                - self.omega(node=node, scenario=scenario))
+                
+    def rho(self, group=None, node=None, action=None):
+        """Risk taken when taking a certain action in a certain node,
+        given a certain scenario. See AAFRA"""
+        return Max([self.Delta_omega(node=node, scenario=scenario, action=action)
+                    for scenario in self.get_scenarios(node=node, group=group)])
+                    
+    def rho_min(self, group=None, node=None):
+        """Minimal risk in node. See AAFRA"""
+        return Min([self.rho(group=group, node=node, action=action)
+                    for action in node.actions])
+                    
+
     # other methods_
 
     def __repr__(self):
