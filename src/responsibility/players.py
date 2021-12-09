@@ -38,7 +38,7 @@ Gr = Group
 
 def players(*names):
     """Return a Player for each name listed as an argument"""
-    return (Player(name) for name in names)
+    return tuple(Player(name) for name in names)
     
 def global_players(*names):
     """Create a Player for each name listed as an argument 

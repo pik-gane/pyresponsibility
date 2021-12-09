@@ -21,16 +21,16 @@ class Node (_AbstractObject):
         """Predecessor Node if not is_root"""
         return self._a_predecessor
 
-    _a_history = None
+    _a_path = None
     @property
-    def history(self):
+    def path(self):
         """List of Nodes from root to predecessor"""
-        if self._a_history is None:
+        if self._a_path is None:
             if self.predecessor is None:
-                self._a_history = []
+                self._a_path = []
             else:
-                self._a_history = self.predecessor.history + [self.predecessor]
-        return self._a_history
+                self._a_path = self.predecessor.path + [self.predecessor]
+        return self._a_path
 
     _a_branch = None
     @property
@@ -46,7 +46,7 @@ class Node (_AbstractObject):
         """The whole (!) Tree containing this node 
         (not just the branch starting here)"""
         if self._a_tree is None:
-            self._a_tree = trees.Tree((self.history + [self])[0])
+            self._a_tree = trees.Tree((self.path + [self])[0])
         return self._a_tree
 
     def __repr__(self):
@@ -365,6 +365,7 @@ class InformationSet (_AbstractObject):
             for node in self.nodes:
                 assert isinstance(node, DecisionNode), "nodes in information set must be DecisionNodes"
                 assert node.player == self._a_player, "all nodes in information set must belong to the same player"
+        # TODO: assert that all member nodes have the same choice history!
 
     _a_player = None
     @property
@@ -385,6 +386,12 @@ class InformationSet (_AbstractObject):
                 else:
                     assert self._a_actions == actions
         return self._a_actions
+
+    _a_choice_history = None
+    @property
+    def choice_history(self):
+        """List of (InformationSet, Action) pairs from root to predecessor"""
+        pass # TODO!
 
     def __contains__(self, node):
         return node in self._i_nodes

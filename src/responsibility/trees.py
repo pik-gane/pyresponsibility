@@ -1,5 +1,6 @@
 import sys
 import itertools
+import numpy as np
 import sympy as sp
 try:
     import graphviz as gv
@@ -265,7 +266,7 @@ class Branch (_AbstractObject):
             for transitions in self._get_transitions(
                     node=v, include_types=(nd.PossibilityNode, nd.DecisionNode), 
                     exclude_group=group, consistently=True):
-                yield Scenario("_", anchor=v, transitions=transitions)
+                yield Scenario("_", current_node=v, transitions=transitions)
     
     #@profile
     def _get_choices(self, node=None, group=None):
@@ -322,8 +323,14 @@ class Branch (_AbstractObject):
                 if not is_consistent: 
                     break
             if is_consistent: 
-                yield Strategy("_", anchor=node, choices=choices)
+                yield Strategy("_", start=node.information_set, choices=choices)
         
+    # aggregation methods across scenarios and/or strategies:
+        
+
+
+
+
     # outcome distributions:
         
     _n_not_used_cache = 0
@@ -363,13 +370,13 @@ class Branch (_AbstractObject):
         @return: dict of probability keyed by Outcome
         """
         assert isinstance(node, nd.Node)
-        assert isinstance(scenario, Scenario) and node in scenario.anchor.information_set
-        assert isinstance(strategy, Strategy) and node in strategy.anchor.information_set
+        assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
+        assert isinstance(strategy, Strategy) and node in strategy.start
         transitions = {**scenario.transitions}
         for S, act in strategy.choices.items():
             assert S not in transitions, "scenario and strategy must not overlap"
             transitions[S] = act
-        distribution = self._get_outcome_distribution(node=scenario.anchor, transitions=transitions)
+        distribution = self._get_outcome_distribution(node=scenario.current_node, transitions=transitions)
         for (ou, p) in distribution.items():
             if isinstance(p, sp.Expr):
                 distribution[ou] = sp.simplify(p)
@@ -408,18 +415,18 @@ class Branch (_AbstractObject):
         If the outcome lacks the attribute, a zero value is assumed.
         """
         assert isinstance(node, nd.Node)
-        assert isinstance(scenario, Scenario) and node in scenario.anchor.information_set
-        assert isinstance(strategy, Strategy) and node in strategy.anchor.information_set
+        assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
+        assert isinstance(strategy, Strategy) and node in strategy.start
         assert isinstance(attribute, str)
         transitions = {**scenario.transitions}
         for S, act in strategy.choices.items():
             assert S not in transitions, "scenario and strategy must not overlap"
             transitions[S] = act
-        expectation = self._get_expectation(node=scenario.anchor, transitions=transitions, attribute=attribute)
+        expectation = self._get_expectation(node=scenario.current_node, transitions=transitions, attribute=attribute)
         return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
         
     _d_likelihood = {}
-    def _get_likelihood(self, node=None, transitions=None, is_acceptable=False):
+    def _get_likelihood(self, node=None, transitions=None, is_acceptable=False, resolve=None):
         """helper method"""
         if isinstance(node, nd.OutcomeNode):
             return 1 if node.outcome.is_acceptable == is_acceptable else 0
@@ -427,9 +434,24 @@ class Branch (_AbstractObject):
             new_transitions = transitions.copy()
             if node in transitions:
                 successor = new_transitions.pop(node) 
+                return self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
             else:
-                successor = node.consequences[new_transitions.pop(node.information_set)]
-            return self._get_likelihood(successor, new_transitions, is_acceptable)
+                ins = node.information_set
+                if ins in node.consequences:
+                    successor = node.consequences[new_transitions.pop(node.information_set)]
+                    return self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
+                elif resolve=="min":
+                    values = [self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
+                              for successor in node.successors]
+                    return (sp.Min(*values) if np.any([isinstance(l, sp.Expr) for l in values])
+                            else min(*values))
+                elif resolve=="max":
+                    values = [self._get_likelihood(successor, new_transitions, is_acceptable, resolve)
+                              for successor in node.successors]
+                    return (sp.Max(*values) if np.any([isinstance(l, sp.Expr) for l in values])
+                            else max(*values))
+                else:
+                    assert 0==1
         else:
             key = (node, frozenset(transitions.items()), is_acceptable)
             try:
@@ -440,25 +462,25 @@ class Branch (_AbstractObject):
                 self._n_not_used_cache += 1
                 likelihood = 0
                 for successor, p1 in node.probabilities.items():
-                    likelihood += p1 * self._get_likelihood(successor, transitions, is_acceptable)
+                    likelihood += p1 * self._get_likelihood(successor, transitions, is_acceptable, resolve)
                 self._d_likelihood[key] = likelihood
                 return likelihood
     
-    def get_likelihood(self, node=None, scenario=None, strategy=None, is_acceptable=False):
+    def get_likelihood(self, node=None, scenario=None, strategy=None, is_acceptable=False, resolve=None):
         """Calculate the probability of an unacceptable (or acceptable) outcome
         conditional on being in the branch's root node and assuming a certain scenario and strategy.
         @param is_acceptable: whether the probability of unacceptable (False) or acceptable (True)
                outcomes is sought (default: False)
         """
         assert isinstance(node, nd.Node)
-        assert isinstance(scenario, Scenario) and node in scenario.anchor.information_set
-        assert isinstance(strategy, Strategy) and node in strategy.anchor.information_set
+        assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
+        assert isinstance(strategy, Strategy) and node in strategy.start
         assert isinstance(is_acceptable, bool)
         transitions = {**scenario.transitions}
         for S, act in strategy.choices.items():
             assert S not in transitions, "scenario and strategy must not overlap"
             transitions[S] = act
-        likelihood = self._get_likelihood(node=scenario.anchor, transitions=transitions, is_acceptable=is_acceptable)
+        likelihood = self._get_likelihood(scenario.current_node, transitions, is_acceptable, resolve)
         return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
     
     def get_guaranteed_likelihood(self, node, is_acceptable=False):

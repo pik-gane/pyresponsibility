@@ -20,19 +20,20 @@ class PartialSolution (_AbstractObject):
 
             
 class Scenario (PartialSolution):
-    """A combination of a certain "anchor" node representing the current state,
+    """A combination of a certain node representing the current state,
     plus a combination of choices assumed to be made by "nature" at PossibilityNodes
     and ProbabilityNodes and choices assumed to be made by all players outside 
-    a certain group at certain nodes in the anchor node's branch""" 
+    a certain group at certain nodes in the anchor node's branch. Might be 
+    complete or incomplete.""" 
     
-    _i_anchor = None
+    _i_current_node = None
     @property
-    def anchor(self):
+    def current_node(self):
         """Node"""
-        return self._i_anchor
+        return self._i_current_node
 
     def validate(self):
-        assert isinstance(self.anchor, nodes.Node), "anchor must be a Node"
+        assert isinstance(self.current_node, nodes.Node), "current_node must be a Node"
         assert isinstance(self.transitions, dict)
         for source, target in self.transitions.items():
             assert ((isinstance(source, nodes.InnerNode) and target in source.successors) 
@@ -40,13 +41,14 @@ class Scenario (PartialSolution):
                     
     
 class Strategy (_AbstractObject):
-    """Represents a combination of choices made by the players in a certain group""" 
+    """Represents a combination of choices made by the players in a certain group. 
+    Might be complete or incomplete w.r.t. a certain start information set.""" 
     
-    _i_anchor = None
+    _i_start = None
     @property
-    def anchor(self):
-        """Node"""
-        return self._i_anchor
+    def start(self):
+        """InformationSet"""
+        return self._i_start
 
     _i_choices = None
     @property
@@ -55,7 +57,7 @@ class Strategy (_AbstractObject):
         return self._i_choices
     
     def validate(self):
-        assert isinstance(self.anchor, nodes.Node), "anchor must be a Node"
+        assert isinstance(self.start, nodes.InformationSet), "anchor must be an InformationSet"
         assert isinstance(self.choices, dict), "choices must be a dict" 
         for ins, ac in self.choices.items():
             assert isinstance(ins, nodes.InformationSet), "choices maps InformationSets to actions"

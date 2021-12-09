@@ -5,5 +5,6 @@ from .functions import *
 from .nodes import *
 from .outcomes import *
 from .players import *
+from .simultaneous import *
 from .solutions import *
 from .trees import *

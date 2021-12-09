@@ -3,7 +3,7 @@ from time import time
 from responsibility import *
 #from responsibility.problems.drsc_fig1a import T
 #from responsibility.problems.drsc_fig1b import T
-from responsibility.problems.drsc_fig1c import T
+#from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig1d import T
 #from responsibility.problems.drsc_fig2a import T
 #from responsibility.problems.drsc_fig2b import T
@@ -11,31 +11,40 @@ from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig5 import T
 #from responsibility.problems.qrpc_fig3 import T
 #from responsibility.problems.public_good_2_of_3 import *
+from responsibility.problems.threshold_public_good import *
 #from responsibility.problems.repeated_public_good_2_of_3 import *
+
+T = threshold_public_good(4,2)
 
 print(repr(T))
 
-print(T.get_guaranteed_likelihood(T.root))
+#print(T.get_guaranteed_likelihood(T.root))
+T.draw("/tmp/test.pdf", show=True)
 
 exit()
 
-T.draw("/tmp/test.pdf", show=True)
 
 
-sc_allD = Scenario("allD", anchor=vi, tr={
+sc_allD = Scenario("allD", current_node=vi, tr={
     S: D for S in T.information_sets.values() if S.player != i
 })
-sc_jCkD = Scenario("jCkD", anchor=vi, tr={
+sc_jCkD = Scenario("jCkD", current_node=vi, tr={
     S: (C if S.player == j else D) for S in T.information_sets.values() if S.player != i
 })
-st_iC = Strategy("iC", anchor=vi, ch={
+st_iC = Strategy("iC", start=vi.information_set, ch={
     S: C for S in T.get_information_sets(i).values()
 })
+
+print(T.get_likelihood(T.root,sc_allD,Strategy("", start=vi.information_set, ch={}),resolve="max"))
+
+exit()
 
 start = time()
 dist = T.get_outcome_distribution(sc_jCkD, st_iC)
 print(dist)
 print(time()-start, "sec.")
+
+exit()
 
 start = time()
 print(len(list(T.get_scenarios(vi, player=i))))
