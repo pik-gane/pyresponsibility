@@ -1,6 +1,8 @@
 from numpy.random import choice, uniform
 import sympy as sp
 
+# TODO: when putting two DeN into an InS, immediately bring them together as successors of the next node.
+
 from .players import *
 from .outcomes import *
 from .actions import *

@@ -14,7 +14,7 @@ from . import nodes as nd
 
 """
 References:
-AAFRA: Hiller, S., Israel, J., & Heitzig, J. (2021). An Axiomatic Approach to Formalized Responsibility Ascription.
+[AAFRA] Hiller, S., Israel, J., & Heitzig, J. (2021). An Axiomatic Approach to Formalized Responsibility Ascription.
 """
 
 class Branch (_AbstractObject):
@@ -48,7 +48,7 @@ class Branch (_AbstractObject):
                             print(v.choice_history)    
                             print(ins.nodes[0].information_set)
                             print(v.information_set)                
-#                            assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"
+                            assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"
         
     # properties holding dicts of named objects keyed by their name:
     
@@ -156,7 +156,7 @@ class Branch (_AbstractObject):
         if self._a_named_actions is None:
             self._a_named_actions = {a.name: a
                 for v in self.named_nodes.values() if hasattr(v, "actions")
-                for a in v.named_actions}
+                for a in v.actions}
         return self._a_named_actions
 
     # generators for objects, named or not:
@@ -441,7 +441,8 @@ class Branch (_AbstractObject):
     def _get_expectation(self, node=None, transitions=None, attribute=None, resolve=None):
         """helper method"""
         if isinstance(node, nd.OutcomeNode):
-            return (0 if node.outcome.is_acceptable else 1) if attribute is None else getattr(node.outcome, attribute, 0)
+            return ((0 if node.outcome.is_acceptable else 1) if attribute is None 
+                    else getattr(node.outcome, attribute, 0))
         elif not isinstance(node, nd.ProbabilityNode):
             new_transitions = transitions.copy()
             if node in transitions:
@@ -469,12 +470,17 @@ class Branch (_AbstractObject):
                 self._d_expectation[key] = expectation
                 return expectation
     
-    def get_expectation(self, node=None, scenario=None, strategy=None, attribute=None, resolve=None):
+    def get_expectation(self, node=None, scenario=None, player=None, group=None,
+                        strategy=None, attribute=None, resolve=None):
         """Calculate the (min or max) expectation value of some outcome attribute
-        conditional on being in the branch's root node and assuming a certain scenario and strategy.
+        conditional on being in the branch's root node and optionally assuming 
+        a certain scenario and strategy.
         @param attribute: name of the outcome attribute
         @param resolve: whether to use the Min or Max expectation over those
                decision and possiblity nodes not resolved by scenario and strategy
+        @param player, group: if node player equals player or is in group and no 
+               strategy is given, we assume the uncertainty implied by the node's
+               information set. 
         If the outcome lacks the attribute, a zero value is assumed.
         """
         assert isinstance(node, nd.Node)
@@ -490,18 +496,33 @@ class Branch (_AbstractObject):
             expectation = self._get_expectation(scenario.current_node, transitions, attribute, resolve)
             return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
         else:
-            # take min or max over nodes in information set:
-            return resolve([self._get_expectation(node, Scenario("", current_node=c, transitions={}), 
-                                                  strategy, attribute, resolve)
-                            for c in node.information_set.nodes])
+            if isinstance(node, nd.DecisionNode):
+                if player is not None:
+                    assert group is None
+                    nodes = node.information_set.nodes if node.player == player else {node} 
+                else:
+                    assert group is not None
+                    nodes = node.information_set.nodes if node.player in group else {node} 
+            else:
+                nodes = {node}
+            # take min or max over relevant nodes:
+            return resolve([self._get_expectation(
+                                node=node, scenario=Scenario("", current_node=c, transitions={}), 
+                                strategy=strategy, attribute=attribute, resolve=resolve)
+                            for c in nodes])
         
-    def get_likelihood(self, node=None, scenario=None, strategy=None, is_acceptable=False, resolve=None):
+    def get_likelihood(self, node=None, scenario=None, player=None, group=None,
+                       strategy=None, is_acceptable=False, resolve=None):
         """Calculate the (min or max) probability of an unacceptable (or acceptable) outcome
-        conditional on being in the branch's root node and assuming a certain scenario and strategy.
+        conditional on being in the branch's root node and optionally assuming 
+        a certain scenario and strategy.
         @param is_acceptable: whether the probability of unacceptable (False) or acceptable (True)
                outcomes is sought (default: False)
         @param resolve: whether to use the Min or Max probability over those
                decision and possibility nodes not resolved by scenario and strategy
+        @param player, group: if node player equals player or is in group and no 
+               strategy is given, we assume the uncertainty implied by the node's
+               information set. 
         """
         assert isinstance(node, nd.Node)
         assert isinstance(is_acceptable, bool)
@@ -516,16 +537,35 @@ class Branch (_AbstractObject):
             likelihood = self._get_expectation(scenario.current_node, transitions, None, resolve)
             return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
         else:
-            # take min or max over nodes in information set:
-            return resolve([self.get_likelihood(node, Scenario("", current_node=c, transitions={}), 
-                                                strategy, is_acceptable, resolve)
-                            for c in node.information_set.nodes])
+            if isinstance(node, nd.DecisionNode):
+                if player is not None:
+                    assert group is None
+                    nodes = node.information_set.nodes if node.player == player else {node} 
+                else:
+                    assert group is not None
+                    nodes = node.information_set.nodes if node.player in group else {node} 
+            else:
+                nodes = {node}
+            # take min or max over relevant nodes:
+            return resolve([self.get_likelihood(
+                                node=node, scenario=Scenario("", current_node=c, transitions={}), 
+                                strategy=strategy, is_acceptable=is_acceptable, resolve=resolve)
+                            for c in nodes])
     
-    def get_guaranteed_likelihood(self, node):
+    def get_guaranteed_likelihood(self, player=None, group=None, node=None):
         """Calculate the known guaranteed likelihood (minimum likelihood over
         all scenario and strategies) of an unacceptable outcome, called gamma in AAFRA"""
-        return self.get_likelihood(node, scenario=None, strategy=None, resolve=Min)
+        return self.get_likelihood(node=node, scenario=None, player=player, group=group, strategy=None, resolve=Min)
 
+    gamma = get_guaranteed_likelihood
+
+    def get_optimal_avoidance_likelihood(self, node=None, scenario=None):
+        """Calculate the minimal likelihood achievable by the "optimal avoidance" strategy given
+        a certain scenario, called omega in AAFRA"""
+        return self.get_likelihood(node=node, scenario=scenario, strategy=None, resolve=Min)
+
+    omega = get_optimal_avoidance_likelihood
+    
     # other methods_
 
     def __repr__(self):

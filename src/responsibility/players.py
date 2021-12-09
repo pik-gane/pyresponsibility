@@ -14,21 +14,21 @@ Pl = Player
 """Abbreviation for Player"""
 
 class Group (_AbstractObject):
-    """Represents any subset of the set of named_players"""
+    """Represents any subset of the set of players"""
 
     _i_players = None
     @property
-    def named_players(self):
+    def players(self):
         """Set of member Players"""
         return self._i_players
     
     def validate(self):
-        assert isinstance(self.named_players, frozenset)
-        for player in self.named_players:
+        assert isinstance(self.players, frozenset)
+        for player in self.players:
             assert isinstance(player, Player), "group must be set of Players"
             
     def __contains__(self, player):
-        return player in self.named_players
+        return player in self.players
         
     def __repr__(self):
         return self.name if hasname(self) else "{*}"

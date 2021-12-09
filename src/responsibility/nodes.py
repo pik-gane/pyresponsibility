@@ -21,6 +21,8 @@ class Node (_AbstractObject):
         """Predecessor Node if not is_root"""
         return self._a_predecessor
 
+    pred = predecessor
+    
     @property
     def path(self):
         """List of Nodes from root to self"""
@@ -76,6 +78,8 @@ class InnerNode (Node):
     def successors(self):
         """Set of successor Nodes"""
         return self._i_successors
+
+    su = successors
 
     def __init__(self, name, **kwargs):
         super(InnerNode, self).__init__(name, **kwargs)
@@ -179,6 +183,8 @@ class ProbabilityNode (InnerNode):
         """Dict of successor Node: probability 0...1"""
         return self._i_probabilities
 
+    pr = probabilities
+    
     def validate(self):
         assert isinstance(self.probabilities, dict)
         self._i_successors = set(self.probabilities.keys())
@@ -232,6 +238,8 @@ class DecisionNode (InnerNode):
     def consequences(self):
         """dict of Action: successor Node"""
         return self._i_consequences
+    
+    co = consequences
         
     _i_information_set = None
     @property

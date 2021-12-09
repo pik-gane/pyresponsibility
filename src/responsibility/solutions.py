@@ -32,6 +32,8 @@ class Scenario (PartialSolution):
         """Node"""
         return self._i_current_node
 
+    cu = current_node
+    
     def validate(self):
         assert isinstance(self.current_node, nodes.Node), "current_node must be a Node"
         assert isinstance(self.transitions, dict)
@@ -39,6 +41,13 @@ class Scenario (PartialSolution):
             assert ((isinstance(source, nodes.InnerNode) and target in source.successors) 
                     or (isinstance(source, nodes.InformationSet) and target in source.actions))
                     
+    def sub_scenario(self, action):
+        """Return the subscenario in which action was taken in current_node"""
+        return Scenario(self.name + "_" + action.name, 
+                        current_node=self.current_node.consequences[action],
+                        transitions=self.transitions)
+                        
+    sub = sub_scenario
     
 class Strategy (_AbstractObject):
     """Represents a combination of choices made by the players in a certain group. 

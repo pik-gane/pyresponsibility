@@ -10,21 +10,28 @@ from responsibility import *
 #from responsibility.problems.drsc_fig3 import T
 #from responsibility.problems.drsc_fig5 import T
 #from responsibility.problems.qrpc_fig3 import T
-#from responsibility.problems.public_good_2_of_3 import *
+from responsibility.problems.public_good_2_of_3 import T
 #from responsibility.problems.repeated_public_good_2_of_3 import *
 
 #from responsibility.problems.threshold_public_good import *
 #T = threshold_public_good(4, 2)
 
-T = random_tree(1, 100, total_recall=True)
+#T = random_tree(1, 100, total_recall=True)
+
+T.make_globals()
 
 #print(repr(T))
 
-T.draw("/tmp/test.pdf", show=True)
+#T.draw("/tmp/test.pdf", show=True)
+
+from responsibility.brfs.aafra import *
+
+G = Group("", players={i})
+print(r_like(tree=T, group=G, node=v1, action=dont))
+print(r_risk(tree=T, group=G, node=v1, action=dont))
 
 exit()
 
-T.make_globals()
 
 i=i1
 

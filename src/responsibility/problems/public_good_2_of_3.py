@@ -12,9 +12,9 @@ not_enough = Ou("not_enough", ac=False)
 enough = Ou("enough", ac=True)
 
 A = [dont, contribute]
-r = make_simultaneous_move ("", named_players=(i, j, k), consequences={
+r = make_simultaneous_move ("v1", players=(i, j, k), consequences={
     (A[ai], A[aj], A[ak]): 
-        OuN("", ou=enough if ai + aj + ak >= 2 else not_enough)
+        OuN("w"+str(ai)+str(aj)+str(ak), ou=enough if ai + aj + ak >= 2 else not_enough)
     for ai in [0,1] for aj in [0,1] for ak in [0,1]
 })
 
