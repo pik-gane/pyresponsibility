@@ -5,10 +5,13 @@ from ..functions import *
 
 r_coop = PRF(
     "r_coop",
-    desc="Increase in cooperatively achievable worst-case likelihood",
+    desc="Worst-case increase in cooperatively achievable likelihood",
     function=(
         lambda T, unused_G, v, a:
-            T.cooperatively_achievable_worst_case_likelihood(node=v, 
-                 fixed_choices={v.information_set: a}) 
-            - T.cooperatively_achievable_worst_case_likelihood(node=v)
+            Max([
+                T.cooperatively_achievable_likelihood(node=v, env_scenario=eps,
+                                                      fixed_choices={v.information_set: a}) 
+                - T.cooperatively_achievable_likelihood(node=v, env_scenario=eps)
+                for eps in T.get_scenarios(node=v, group=T.players)
+            ])
     ))

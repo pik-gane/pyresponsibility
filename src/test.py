@@ -2,14 +2,30 @@ from responsibility import *
 from responsibility.brfs.aafra import *
 from responsibility.brfs.cooperation_oriented import *
 
-case = "drsc_fig1a"
+case = "drsc_fig1d"
 
 if case == "drsc_fig1a":
     from responsibility.problems.drsc_fig1a import T
     T.make_globals()
-    v, pl, a1, a2 = v2, i, pass_, shoot
+    v = v1
+if case == "drsc_fig1bi":
+    from responsibility.problems.drsc_fig1b import T
+    T.make_globals()
+    v = v2
+    # that i gets blamed even if she does not throw in v2 shows that r_like is not plausible
+if case == "drsc_fig1bj":
+    from responsibility.problems.drsc_fig1b import T
+    T.make_globals()
+    v = T.root
+if case == "drsc_fig1c":
+    from responsibility.problems.drsc_fig1c import T
+    T.make_globals()
+    v = v1
+if case == "drsc_fig1d":
+    from responsibility.problems.drsc_fig1d import T
+    T.make_globals()
+    v = v1
        
-#from responsibility.problems.drsc_fig1b import T
 #from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig1d import T
 #from responsibility.problems.drsc_fig2a import T
@@ -25,15 +41,15 @@ if case == "drsc_fig1a":
 
 #T = random_tree(1, 100, total_recall=True)
 
+pl = v.player
 G = Group("", players={pl})
 
 prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop]
 
 for prf in prfs:
-    print(prf.name, ":", 
-          prf(tree=T, group=G, node=v, action=a1),
-          prf(tree=T, group=G, node=v, action=a2)
-          )
+    print(prf.name, ":")
+    for a in v.actions:
+        print(" ", {v2.name: prf(tree=T, group=G, node=v2, action=a) for v2 in v.information_set.nodes}, pl, a)
 
 exit()
 

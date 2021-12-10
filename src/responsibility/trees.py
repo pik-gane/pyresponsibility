@@ -583,6 +583,19 @@ class Branch (_AbstractObject):
         return Min([self.rho(group=group, node=node, action=action)
                     for action in node.actions])
                     
+    def cooperatively_achievable_likelihood(self, node=None, env_scenario=None, fixed_choices={}):
+        """Achievable likelihood of unacceptable outcome under a certain env_scenario
+        for all possibility nodes, minimized over all joint strategies of the whole 
+        player set that respect the optionally given fixed_choices.
+        """
+        assert isinstance(env_scenario, Scenario)
+        all = Group("all", players=self.players)
+        return Min([
+            self.get_likelihood(node=node, scenario=env_scenario, strategy=strategy, resolve=Max)
+            for strategy in self.get_strategies(node=node, group=all)
+            if strategy.includes(fixed_choices)
+        ])
+
     def cooperatively_achievable_worst_case_likelihood(self, node=None, fixed_choices={}):
         """Minimum of worst-case likelihood of unacceptable outcome,
         minimized over all joint strategies of the whole player set that respect
