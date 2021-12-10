@@ -8,7 +8,7 @@ except:
     print("Branch.draw() unavailable since graphviz python package is not available")
 
 from .core import _AbstractObject, hasname, update_consistently, profile, Max, Min
-from .players import Group
+from .players import Group, _get_group
 from .solutions import PartialSolution, Scenario, Strategy
 from . import nodes as nd
 
@@ -159,6 +159,14 @@ class Branch (_AbstractObject):
                 for a in v.actions}
         return self._a_named_actions
 
+    _a_players = None
+    @property    
+    def players(self):
+        """set of all (!) players, named or not"""
+        if self._a_players is None:
+            self._a_players = {v.player for v in self.get_decision_nodes()}
+        return self._a_players
+
     # generators for objects, named or not:
         
     def get_nodes(self):
@@ -224,7 +232,7 @@ class Branch (_AbstractObject):
             ou = v.outcome
             if ou.nodes[0] == v:
                 yield ou
-                
+            
     # generators for solutions:
     
     #@profile
@@ -309,21 +317,17 @@ class Branch (_AbstractObject):
             yield PartialSolution("_", transitions=transitions)
         
     def get_scenarios(self, node=None, player=None, group=None):
-        """Return all scenarios for the given player or group starting at the 
-        branch's root node.
-        If that is a DecisionNode, it must belong to that player or group.
+        """Return all scenarios for the given player or group starting at some 
+        node.
         @return: generator for Scenario objects   
         """
-        assert isinstance(node, nd.Node)
-        if player is not None:
-            assert group is None
-            group = Group("_", players={player})
-        assert isinstance(group, Group)
-        if isinstance(node, nd.DecisionNode):
-            assert node.player in group
+        group = _get_group(player=player, group=group)
+        assert group is not None
+        if isinstance(node, nd.DecisionNode) and node.player in group:
             # yield from concatenation of scenarios of all nodes in same information set:
             nodes = node.information_set.nodes
         else:
+            print(node, node.player, group)
             nodes = {node}
         for v in nodes: 
             for transitions in self._get_transitions(
@@ -359,20 +363,18 @@ class Branch (_AbstractObject):
             yield {}
         
     def get_strategies(self, node=None, player=None, group=None):
-        """Return all strategies for the given player or group starting at the 
-        branch's root node.
-        If that is a DecisionNode, it must belong to that player or group.
+        """Return all strategies for the given player or group starting at a 
+        certain node.
         @return: generator for Strategy objects   
         """
         assert isinstance(node, nd.Node)
-        if player is not None:
-            assert group is None
-            group = Group("_", players={player})
-        assert isinstance(group, Group)
-        assert isinstance(node, nd.DecisionNode), "start node of strategy must be a DecisionNode"
-        assert node.player in group, "node must belong to player or group"
-        nodes = node.information_set.nodes
-        # yield from cartesian product of strategies of all nodes in same information set:
+        group = _get_group(player=player, group=group)
+        assert group is not None
+        if isinstance(node, nd.DecisionNode) and node.player in group:  
+            # yield from cartesian product of strategies of all nodes in same information set:
+            nodes = node.information_set.nodes
+        else:
+            nodes = {node}
         cartesian_product = itertools.product(*(
             self._get_choices(node=v, group=group)
             for v in nodes))
@@ -384,7 +386,7 @@ class Branch (_AbstractObject):
                 if not is_consistent: 
                     break
             if is_consistent: 
-                yield Strategy("_", start=node.information_set, choices=choices)
+                yield Strategy("_", choices=choices)
         
     # outcome distributions:
         
@@ -426,7 +428,7 @@ class Branch (_AbstractObject):
         """
         assert isinstance(node, nd.Node)
         assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
-        assert isinstance(strategy, Strategy) and node in strategy.start
+        assert isinstance(strategy, Strategy)
         transitions = {**scenario.transitions}
         for S, act in strategy.choices.items():
             assert S not in transitions, "scenario and strategy must not overlap"
@@ -486,10 +488,10 @@ class Branch (_AbstractObject):
         assert isinstance(node, nd.Node)
         assert isinstance(attribute, str)
         if scenario is not None:
-            assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
+            assert isinstance(scenario, Scenario)
             transitions = {**scenario.transitions}
             if strategy is not None:
-                assert isinstance(strategy, Strategy) and node in strategy.start
+                assert isinstance(strategy, Strategy)
                 for S, act in strategy.choices.items():
                     assert S not in transitions, "scenario and strategy must not overlap"
                     transitions[S] = act
@@ -497,12 +499,9 @@ class Branch (_AbstractObject):
             return sp.simplify(expectation) if isinstance(expectation, sp.Expr) else expectation
         else:
             if isinstance(node, nd.DecisionNode):
-                if player is not None:
-                    assert group is None
-                    nodes = node.information_set.nodes if node.player == player else {node} 
-                else:
-                    assert group is not None
-                    nodes = node.information_set.nodes if node.player in group else {node} 
+                group = _get_group(player=player, group=group)
+                assert group is not None
+                nodes = node.information_set.nodes if node.player in group else {node} 
             else:
                 nodes = {node}
             # take min or max over relevant nodes:
@@ -527,10 +526,10 @@ class Branch (_AbstractObject):
         assert isinstance(node, nd.Node)
         assert isinstance(is_acceptable, bool)
         if scenario is not None:
-            assert isinstance(scenario, Scenario) and node in scenario.current_node.information_set
+            assert isinstance(scenario, Scenario)
             transitions = {**scenario.transitions}
             if strategy is not None:
-                assert isinstance(strategy, Strategy) and node in strategy.start
+                assert isinstance(strategy, Strategy)
                 for S, act in strategy.choices.items():
                     assert S not in transitions, "scenario and strategy must not overlap"
                     transitions[S] = act
@@ -538,19 +537,18 @@ class Branch (_AbstractObject):
             return sp.simplify(likelihood) if isinstance(likelihood, sp.Expr) else likelihood
         else:
             if isinstance(node, nd.DecisionNode):
-                if player is not None:
-                    assert group is None
-                    nodes = node.information_set.nodes if node.player == player else {node} 
-                else:
-                    assert group is not None
-                    nodes = node.information_set.nodes if node.player in group else {node} 
+                group = _get_group(player=player, group=group)
+                assert group is not None
+                nodes = node.information_set.nodes if node.player in group else {node} 
             else:
                 nodes = {node}
             # take min or max over relevant nodes:
             return resolve([self.get_likelihood(
-                                node=node, scenario=Scenario("", current_node=c, transitions={}), 
+                                node=c, scenario=Scenario("", current_node=c, transitions={}), 
                                 strategy=strategy, is_acceptable=is_acceptable, resolve=resolve)
                             for c in nodes])
+    
+    # some useful components for constructing responsibility functions:
     
     def get_guaranteed_likelihood(self, player=None, group=None, node=None):
         """Calculate the known guaranteed likelihood (minimum likelihood over
@@ -585,6 +583,17 @@ class Branch (_AbstractObject):
         return Min([self.rho(group=group, node=node, action=action)
                     for action in node.actions])
                     
+    def cooperatively_achievable_worst_case_likelihood(self, node=None, fixed_choices={}):
+        """Minimum of worst-case likelihood of unacceptable outcome,
+        minimized over all joint strategies of the whole player set that respect
+        the optionally given fixed_choices.
+        """
+        all = Group("all", players=self.players)
+        return Min([
+            self.get_likelihood(node=node, group=all, strategy=strategy, resolve=Max)
+            for strategy in self.get_strategies(node=node, group=all)
+            if strategy.includes(fixed_choices)
+        ])
 
     # other methods_
 
@@ -620,6 +629,7 @@ class Branch (_AbstractObject):
                 sub.node(ou.name, shape="triangle" if ou.is_acceptable else "invtriangle")
         self.root._add_to_dot(dot)
         dot.render(outfile=filename, view=show)
+
 
 class Tree (Branch):
     """Represents the whole tree (=the branch starting at the tree's root node)"""

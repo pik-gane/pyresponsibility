@@ -51,3 +51,14 @@ def global_players(*names):
             print("Warning: global var", n, "existed, did not overwrite it.")
         else:
             setattr(module, n, pl)
+
+def _get_group(player=None, group=None):
+    """return a Group object for given player, set of players 'group', 
+    or Group object 'group'"""
+    if player is not None:
+        assert group is None
+        return Group("only_" + player.name, players={player})
+    if group is None or isinstance(group, Group):
+        return group
+    return Group("_" + str(group), players=group)
+    

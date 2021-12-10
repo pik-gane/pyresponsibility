@@ -31,3 +31,12 @@ r_negl = PRF(
         lambda T, G, v, a:
             T.rho(group=G, node=v, action=a) - T.rho_min(group=G, node=v)
     ))
+
+r_like_KSym = PRF(
+    "r_like_KSym", 
+    desc="Increase in guaranteed likelihood: by how much might the guaranteed likelihood have increased from this node to the next due to taking the given action, given the uncertainty about the current node?",
+    function=(
+        lambda T, G, v, a: 
+            Max([r_like(T, G, v2, a) for v2 in v.information_set.nodes])
+    ))
+

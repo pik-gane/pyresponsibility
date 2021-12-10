@@ -3,6 +3,7 @@ from .nodes import *
 from .players import *
 from .trees import *
 
+
 class Function (_AbstractObject):
     """Represents any function. Parent class for the classes below"""
     
@@ -13,6 +14,7 @@ class Function (_AbstractObject):
         super(Function, self).__init__(name, **kwargs)
 
 Fct = Function
+"""Abbreviation for Function"""
 
 
 class AggregationFunction (Function):
@@ -25,6 +27,7 @@ class AggregationFunction (Function):
         return self._i_function(values)
         
 AggF = AggregationFunction
+"""Abbreviation for AggregationFunction"""
 
         
 class ResponsibilityFunction (Function):
@@ -40,6 +43,7 @@ class ResponsibilityFunction (Function):
         return self._i_function(tree, group, node)
 
 RespF = ResponsibilityFunction
+"""Abbreviation for ResponsibilityFunction"""
 
 
 class PointwiseResponsibilityFunction (Function):
@@ -56,7 +60,8 @@ class PointwiseResponsibilityFunction (Function):
         return self._i_function(tree, group, node, action)
 
 PRF = PointwiseResponsibilityFunction
-        
+"""Abbreviation for PointwiseResponsibilityFunction"""
+
 
 class BackwardResponsibilityFunction (ResponsibilityFunction):
     """Represents a backward responsibility function taking a tree, a group, 
@@ -72,6 +77,7 @@ class BackwardResponsibilityFunction (ResponsibilityFunction):
         return self._i_function(tree, group, node)
     
 BRF = BackwardResponsibilityFunction
+"""Abbreviation for BackwardResponsibilityFunction"""
 
 
 class ForwardResponsibilityFunction (ResponsibilityFunction):
@@ -87,3 +93,6 @@ class ForwardResponsibilityFunction (ResponsibilityFunction):
         return self._i_function(tree, group, node)
     
 FRF = ForwardResponsibilityFunction
+"""Abbreviation for ForwardResponsibilityFunction"""
+
+

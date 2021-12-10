@@ -95,9 +95,12 @@ def global_symbols(*names):
             setattr(module, n, s)
 
 def Min(values):
+    """Return the symbolic or numeric minimum of a list of values"""
     return (sp.simplify(sp.Min(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
             else min(values))
 
 def Max(values):
+    """Return the symbolic or numeric maximum of a list of values"""
     return (sp.simplify(sp.Max(*values)) if np.any([isinstance(v, sp.Expr) for v in values])
             else max(values))
+

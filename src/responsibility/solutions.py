@@ -48,17 +48,16 @@ class Scenario (PartialSolution):
                         transitions=self.transitions)
                         
     sub = sub_scenario
+    """Abbreviation for sub_scenario"""
+    
+Scen = Scenario
+"""Abbreviation for Scenario"""
+
     
 class Strategy (_AbstractObject):
     """Represents a combination of choices made by the players in a certain group. 
-    Might be complete or incomplete w.r.t. a certain start information set.""" 
+    Might be complete or incomplete.""" 
     
-    _i_start = None
-    @property
-    def start(self):
-        """InformationSet"""
-        return self._i_start
-
     _i_choices = None
     @property
     def choices(self): 
@@ -66,9 +65,14 @@ class Strategy (_AbstractObject):
         return self._i_choices
     
     def validate(self):
-        assert isinstance(self.start, nodes.InformationSet), "anchor must be an InformationSet"
         assert isinstance(self.choices, dict), "choices must be a dict" 
         for ins, ac in self.choices.items():
             assert isinstance(ins, nodes.InformationSet), "choices maps InformationSets to actions"
             assert ac in ins.actions, "choices maps information sets to feasible actions"    
 
+    def includes(self, choices):
+        """Return whether the given choices are part of this strategy"""
+        return set(choices.items()).issubset(set(self.choices.items()))
+        
+Strat = Strategy
+"""Abbreviation for Strategy"""

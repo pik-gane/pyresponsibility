@@ -1,7 +1,14 @@
-from time import time
-
 from responsibility import *
-#from responsibility.problems.drsc_fig1a import T
+from responsibility.brfs.aafra import *
+from responsibility.brfs.cooperation_oriented import *
+
+case = "drsc_fig1a"
+
+if case == "drsc_fig1a":
+    from responsibility.problems.drsc_fig1a import T
+    T.make_globals()
+    v, pl, a1, a2 = v2, i, pass_, shoot
+       
 #from responsibility.problems.drsc_fig1b import T
 #from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig1d import T
@@ -10,7 +17,7 @@ from responsibility import *
 #from responsibility.problems.drsc_fig3 import T
 #from responsibility.problems.drsc_fig5 import T
 #from responsibility.problems.qrpc_fig3 import T
-from responsibility.problems.public_good_2_of_3 import T
+#from responsibility.problems.public_good_2_of_3 import T
 #from responsibility.problems.repeated_public_good_2_of_3 import *
 
 #from responsibility.problems.threshold_public_good import *
@@ -18,20 +25,20 @@ from responsibility.problems.public_good_2_of_3 import T
 
 #T = random_tree(1, 100, total_recall=True)
 
-T.make_globals()
+G = Group("", players={pl})
 
-#print(repr(T))
+prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop]
 
-#T.draw("/tmp/test.pdf", show=True)
-
-from responsibility.brfs.aafra import *
-
-G = Group("", players={i})
-print(r_like(tree=T, group=G, node=v1, action=dont))
-print(r_risk(tree=T, group=G, node=v1, action=dont))
-print(r_negl(tree=T, group=G, node=v1, action=dont))
+for prf in prfs:
+    print(prf.name, ":", 
+          prf(tree=T, group=G, node=v, action=a1),
+          prf(tree=T, group=G, node=v, action=a2)
+          )
 
 exit()
+
+#print(repr(T))
+#T.draw("/tmp/test.pdf", show=True)
 
 
 i=i1
@@ -61,6 +68,7 @@ st_iC = Strategy("iC", start=vi.information_set, ch={
 
 print(T.get_likelihood(T.root,sc_allD,Strategy("", start=vi.information_set, ch={}),resolve="max"))
 
+from time import time
 
 start = time()
 dist = T.get_outcome_distribution(sc_jCkD, st_iC)
