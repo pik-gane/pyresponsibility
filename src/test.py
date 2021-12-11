@@ -1,8 +1,9 @@
 from responsibility import *
 from responsibility.brfs.aafra import *
 from responsibility.brfs.cooperation_oriented import *
+from responsibility.brfs.bw_elim import *
 
-case = "drsc_fig1d"
+case = "forward_trust_v2"
 
 if case == "drsc_fig1a":
     from responsibility.problems.drsc_fig1a import T
@@ -25,6 +26,14 @@ if case == "drsc_fig1d":
     from responsibility.problems.drsc_fig1d import T
     T.make_globals()
     v = v1
+if case == "forward_trust_v1":
+    from responsibility.problems.forward_trust import T
+    T.make_globals()
+    v = v1
+if case == "forward_trust_v2":
+    from responsibility.problems.forward_trust import T
+    T.make_globals()
+    v = v2
        
 #from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig1d import T
@@ -44,17 +53,18 @@ if case == "drsc_fig1d":
 pl = v.player
 G = Group("", players={pl})
 
-prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop]
+prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop, r_bw_elim]
 
 for prf in prfs:
     print(prf.name, ":")
     for a in v.actions:
         print(" ", {v2.name: prf(tree=T, group=G, node=v2, action=a) for v2 in v.information_set.nodes}, pl, a)
 
-exit()
-
 #print(repr(T))
 #T.draw("/tmp/test.pdf", show=True)
+
+exit()
+
 
 
 i=i1

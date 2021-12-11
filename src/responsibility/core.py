@@ -18,6 +18,7 @@ abbreviations = {
     "la": "labels",
     "no": "nodes",
     "pl": "player",
+    "po": "successors",
     "pr": "probabilities",
     "ro": "root",
     "su": "successors",

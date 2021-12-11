@@ -1,3 +1,4 @@
+import sys
 import random
 import sympy as sp
 
@@ -43,7 +44,7 @@ class Node (_AbstractObject):
         """The whole (!) Tree containing this node 
         (not just the branch starting here)"""
         if self._a_tree is None:
-            self._a_tree = trees.Tree(self.path[0])
+            self._a_tree = trees.Tree("T_" + self.name, ro=self.path[0])
         return self._a_tree
 
     def __repr__(self):
@@ -248,6 +249,9 @@ class DecisionNode (InnerNode):
             InformationSet("S_" + self.name, nodes={self})
         return self._i_information_set
 
+    ins = information_set
+    """Abbreviation for information_set"""
+    
     def validate(self):
         assert isinstance(self.player, Player)
         assert isinstance(self.consequences, dict)
@@ -413,8 +417,27 @@ class InformationSet (_AbstractObject):
         return node in self._i_nodes
         
     def __repr__(self):
-        return (self.name + ": " if hasname(self) else "") + repr(self.nodes)
+        return (self.name if hasname(self) else "") + str(tuple(self.nodes))
 
 InS = InformationSet
 """Abbreviation for InformationSet"""
 
+def information_sets(*names):
+    """Return an InformationSet for each name listed as an argument"""
+    return tuple(InformationSet(name) for name in names)
+    
+inss = information_sets
+
+def global_information_sets(*names):
+    """Create an InformationSet for each name listed as an argument 
+    and store it in a global variable of the same name"""
+    module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
+    module = sys.modules[module_name]
+    for ins in information_sets(*names):
+        n = ins.name
+        if getattr(module, n, ins) != ins:
+            print("Warning: global var", n, "existed, did not overwrite it.")
+        else:
+            setattr(module, n, ins)
+
+global_inss = global_information_sets

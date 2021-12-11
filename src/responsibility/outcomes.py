@@ -38,16 +38,19 @@ class Outcome (_AbstractObject):
 Ou = Outcome
 """Abbreviation for Outcome"""
 
-def outcomes(*names, is_acceptable=None):
+def outcomes(*names, is_acceptable=None, ac=None):
     """Return an Outcome for each name listed as an argument"""
+    if ac is not None:
+        assert is_acceptable is None
+        is_acceptable = ac
     return tuple(Outcome(name, is_acceptable=is_acceptable) for name in names)
     
-def global_outcomes(*names, is_acceptable=None):
+def global_outcomes(*names, is_acceptable=None, ac=None):
     """Create a Outcome for each name listed as an argument 
     and store it in a global variable of the same name"""
     module_name = list(sys._current_frames().values())[0].f_back.f_globals['__name__']
     module = sys.modules[module_name]
-    for ou in outcomes(*names, is_acceptable=is_acceptable):
+    for ou in outcomes(*names, is_acceptable=is_acceptable, ac=ac):
         n = ou.name
         if getattr(module, n, ou) != ou:
             print("Warning: global var", n, "existed, did not overwrite it.")
