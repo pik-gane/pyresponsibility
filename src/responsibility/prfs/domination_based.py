@@ -5,25 +5,6 @@ of Pareto-dominated actions.
 from ..nodes import * 
 from ..functions import *
 
-def strictly_dominates(a1, a2, ins):
-    """Whether action 1 strictly dominates action 2 in information_set
-    w.r.t. all sets of not strictly (!) dominated transitions"""
-    T = ins.nodes[0].tree
-    for v in ins.nodes:
-        for tau in get_undominated_transitions(T, v):
-            l1 = T._get_expectation(node=v, transitions={**tau, ins: a1}, resolve=Max)
-            l2 = T._get_expectation(node=v, transitions={**tau, ins: a2}, resolve=Max)
-            assert l1 <= l2 or l1 > l2
-            if l1 >= l2:
-                return False
-    return True
-
-def is_strictly_dominated(action, ins):
-    """Whether action is strictly dominated by any other action in information set"""
-    for a1 in ins.actions:
-        if a1 != action and strictly_dominates(a1, action, ins):
-            return True
-    return False
               
 def get_undominated_transitions(self, node, include_node=False):
     """generate all transition sets in the branch after v that use only 
@@ -81,31 +62,4 @@ r_bw_elim = PRF("r_bw_elim", function=(
     ))
 
 
-
-if False:
-    """not needed:"""
-    
-    def weakly_dominates(a1, a2, ins):
-        """Whether action 1 weakly dominates action 2 in information_set
-        w.r.t. all sets of not strictly (!) dominated transitions"""
-        found_better = False
-        T = ins.nodes[0].tree
-        for v in ins.nodes:
-            for tau in get_undominated_transitions(T, v):
-                l1 = T._get_expectation(node=v, transitions={**tau, ins: a1}, resolve=Max)
-                l2 = T._get_expectation(node=v, transitions={**tau, ins: a2}, resolve=Max)
-                assert l1 <= l2 or l1 > l2
-                if l1 > l2: 
-                    return False
-                if l1 < l2:
-                    found_better = True
-        return found_better
-    
-    def is_weakly_dominated(action, ins):
-        """Whether action is weakly dominated by any other action in information set"""
-        for a1 in ins.actions:
-            if a1 != action and weakly_dominates(a1, action, ins):
-                return True
-        return False
-    
         

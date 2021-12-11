@@ -18,6 +18,9 @@ class Outcome (_AbstractObject):
         self._a_nodes = []
         super(Outcome, self).__init__(name, **kwargs)
 
+    def clone(self):
+        return Outcome(self.name, desc=self.desc, is_acceptable=self.is_acceptable)
+        
     _a_nodes = None
     @property
     def nodes(self):

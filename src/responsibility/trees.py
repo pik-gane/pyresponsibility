@@ -48,7 +48,14 @@ class Branch (_AbstractObject):
                             print(v.choice_history)    
                             print(ins.nodes[0].information_set)
                             print(v.information_set)                
-                            assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"
+                            assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"       
+        
+    def clone(self, name=None, desc=None):
+        """Return a deep copy of this branch as an independent Tree with 
+        no connections to this tree"""
+        return Tree((name if name is not None else "clone_of_" + self.name),
+                    desc=(desc if desc is not None else self.desc), 
+                    ro=self.root.clone()) 
         
     # properties holding dicts of named objects keyed by their name:
     
@@ -237,57 +244,79 @@ class Branch (_AbstractObject):
     
     #@profile
     def _get_transitions(self, node=None, include_types=None, exclude_types=None, 
-                         include_group=None, exclude_group=None, consistently=None):
+                         include_group=None, exclude_group=None, consistently=None,
+                         fixed_transitions={}, exclude_nodes=[]):
         """helper function"""
-        if (( # type is selected:
-             (include_types is not None and isinstance(node, include_types)) 
-             or (exclude_types is not None and not isinstance(node, exclude_types))
-            )
-            and 
-            ( # if decision node, player is selected:
-             not isinstance(node, nd.DecisionNode) 
-             or (include_group is not None and node.player in include_group)
-             or (exclude_group is not None and node.player not in exclude_group)
-            )):
-            # yield from concatenation of partial solutions of all successors,
-            # each one enriched by the corresponding transition:
-            if (consistently and isinstance(node, nd.DecisionNode)):
-                for action, successor in node.consequences.items():
-                    for transitions in self._get_transitions(
-                            node=successor, include_types=include_types, exclude_types=exclude_types, 
-                            include_group=include_group, exclude_group=exclude_group, consistently=consistently):
-                        transitions[node.information_set] = action
-                        yield transitions
+        if isinstance(node, nd.InnerNode):
+            if (node not in exclude_nodes
+                and
+                ( # type is selected:
+                 (include_types is not None and isinstance(node, include_types)) 
+                 or (exclude_types is not None and not isinstance(node, exclude_types))
+                )
+                and 
+                ( # if decision node, player is selected:
+                 not isinstance(node, nd.DecisionNode) 
+                 or (include_group is not None and node.player in include_group)
+                 or (exclude_group is not None and node.player not in exclude_group)
+                )):
+                # yield from concatenation of partial solutions of all successors,
+                # each one enriched by the corresponding transition:
+                if (consistently and isinstance(node, nd.DecisionNode)):
+                    ins = node.information_set
+                    if ins in fixed_transitions:
+                        action = fixed_transitions[ins]
+                        successor = node.consequences[action]
+                        for transitions in self._get_transitions(
+                                node=successor, include_types=include_types, exclude_types=exclude_types, 
+                                include_group=include_group, exclude_group=exclude_group, consistently=consistently):
+                            transitions[ins] = action
+                            yield transitions
+                    elif node in fixed_transitions:
+                        successor = fixed_transitions[node]
+                        for transitions in self._get_transitions(
+                                node=successor, include_types=include_types, exclude_types=exclude_types, 
+                                include_group=include_group, exclude_group=exclude_group, consistently=consistently):
+                            transitions[node] = successor
+                            yield transitions                    
+                    else:                    
+                        for action, successor in node.consequences.items():
+                            for transitions in self._get_transitions(
+                                    node=successor, include_types=include_types, exclude_types=exclude_types, 
+                                    include_group=include_group, exclude_group=exclude_group, consistently=consistently):
+                                transitions[ins] = action
+                                yield transitions
+                else:
+                    for successor in node.successors:
+                        for transitions in self._get_transitions(
+                                node=successor, include_types=include_types, exclude_types=exclude_types, 
+                                include_group=include_group, exclude_group=exclude_group, consistently=consistently):
+                            transitions[node] = successor
+                            yield transitions
             else:
-                for successor in node.successors:
-                    for transitions in self._get_transitions(
-                            node=successor, include_types=include_types, exclude_types=exclude_types, 
-                            include_group=include_group, exclude_group=exclude_group, consistently=consistently):
-                        transitions[node] = successor
+                # yield from cartesian product of strategies of all successors:
+                su = [fixed_transitions[node]] if node in fixed_transitions else node.successors
+                cartesian_product = itertools.product(*(
+                    self._get_transitions(
+                        node=successor, include_types=include_types, exclude_types=exclude_types, 
+                        include_group=include_group, exclude_group=exclude_group, consistently=consistently)
+                    for successor in su))
+                if consistently: 
+                    for combination in cartesian_product:
+                        transitions = {}
+                        is_ok = True
+                        for component in combination:
+                            is_ok = update_consistently(transitions, component)
+                            if not is_ok: 
+                                break
+                        if is_ok:
+                            yield transitions
+                else:
+                    for combination in cartesian_product:
+                        transitions = {}
+                        for component in combination:
+                            transitions.update(component)
                         yield transitions
-        elif isinstance(node, nd.InnerNode):
-            # yield from cartesian product of strategies of all successors:
-            cartesian_product = itertools.product(*(
-                self._get_transitions(
-                    node=successor, include_types=include_types, exclude_types=exclude_types, 
-                    include_group=include_group, exclude_group=exclude_group, consistently=consistently)
-                for successor in node.successors))
-            if consistently: 
-                for combination in cartesian_product:
-                    transitions = {}
-                    is_ok = True
-                    for component in combination:
-                        is_ok = update_consistently(transitions, component)
-                        if not is_ok: 
-                            break
-                    if is_ok:
-                        yield transitions
-            else:
-                for combination in cartesian_product:
-                    transitions = {}
-                    for component in combination:
-                        transitions.update(component)
-                    yield transitions
         elif isinstance(node, nd.LeafNode):
             yield {}
     
@@ -316,9 +345,9 @@ class Branch (_AbstractObject):
                 include_group=include_group, exclude_group=exclude_group, consistently=consistently):
             yield PartialSolution("_", transitions=transitions)
         
-    def get_scenarios(self, node=None, player=None, group=None):
+    def get_scenarios(self, node=None, player=None, group=None, fixed_transitions={}):
         """Return all scenarios for the given player or group starting at some 
-        node.
+        node, potentially restricted to the optional dict of fixed_transitions.
         @return: generator for Scenario objects   
         """
         group = _get_group(player=player, group=group)
@@ -332,23 +361,31 @@ class Branch (_AbstractObject):
         for v in nodes: 
             for transitions in self._get_transitions(
                     node=v, include_types=(nd.PossibilityNode, nd.DecisionNode), 
-                    exclude_group=group, consistently=True):
+                    exclude_group=group, consistently=True, fixed_transitions=fixed_transitions):
                 yield Scenario("_", current_node=v, transitions=transitions)
     
     #@profile
-    def _get_choices(self, node=None, group=None):
+    def _get_choices(self, node=None, group=None, fixed_choices={}):
         """helper method"""
         if isinstance(node, nd.DecisionNode) and node.player in group:
             # yield from concatenation of partial strategies at all successors,
             # each one enriched by the corresponding choice:
-            for action, successor in node.consequences.items():
-                for choices in self._get_choices(node=successor, group=group):
-                    choices[node.information_set] = action
+            ins = node.information_set
+            if ins in fixed_choices:
+                action = fixed_choices[ins]
+                successor = node.consequences[action]
+                for choices in self._get_choices(node=successor, group=group, fixed_choices=fixed_choices):
+                    choices[ins] = action
                     yield choices
+            else:                    
+                for action, successor in node.consequences.items():
+                    for choices in self._get_choices(node=successor, group=group, fixed_choices=fixed_choices):
+                        choices[ins] = action
+                        yield choices
         elif isinstance(node, nd.InnerNode):
             # yield from cartesian product of strategies at all successors:
             cartesian_product = itertools.product(*(
-                self._get_choices(node=successor, group=group)
+                self._get_choices(node=successor, group=group, fixed_choices=fixed_choices)
                 for successor in node.successors))
             for combination in cartesian_product:
                 choices = {}
@@ -362,23 +399,25 @@ class Branch (_AbstractObject):
         elif isinstance(node, nd.LeafNode):
             yield {}
         
-    def get_strategies(self, node=None, player=None, group=None):
+    def get_strategies(self, node=None, player=None, group=None, fixed_choices={}):
         """Return all strategies for the given player or group starting at a 
-        certain node.
+        certain node, potentially restricted to matching the optionally specified
+        dict of fixed_choices. 
         @return: generator for Strategy objects   
         """
         assert isinstance(node, nd.Node)
         group = _get_group(player=player, group=group)
         assert group is not None
         if isinstance(node, nd.DecisionNode) and node.player in group:  
-            # yield from cartesian product of strategies of all nodes in same information set:
-            nodes = node.information_set.nodes
+            # yield from basically the cartesian product of strategies of all nodes in same information set:
+            ins = node.information_set
+            combinations = itertools.chain(*(itertools.product(*(
+                    self._get_choices(node=v, group=group, fixed_choices={**fixed_choices, ins: a})
+                    for v in ins.nodes))
+                for a in ins.actions))
         else:
-            nodes = {node}
-        cartesian_product = itertools.product(*(
-            self._get_choices(node=v, group=group)
-            for v in nodes))
-        for combination in cartesian_product:
+            combinations = itertools.product(self._get_choices(node=v, group=group, fixed_choices=fixed_choices))
+        for combination in combinations:
             choices = {}
             is_consistent = True
             for component in combination:
@@ -592,8 +631,7 @@ class Branch (_AbstractObject):
         all = Group("all", players=self.players)
         return Min([
             self.get_likelihood(node=node, scenario=env_scenario, strategy=strategy, resolve=Max)
-            for strategy in self.get_strategies(node=node, group=all)
-            if strategy.includes(fixed_choices)
+            for strategy in self.get_strategies(node=node, group=all, fixed_choices=fixed_choices)
         ])
 
     def cooperatively_achievable_worst_case_likelihood(self, node=None, fixed_choices={}):
