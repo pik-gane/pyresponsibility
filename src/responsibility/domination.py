@@ -46,6 +46,7 @@ def is_weakly_dominated(action, ins):
             return True
     return False
 
+# TODO: in the following, only keep past nodes that are on the ins' path:
 def trust_based_reduced_tree(tree, information_set):
     """Return a clone of the tree where all iteratively strongly dominated 
     actions that are not in the history of information_set or belong to the

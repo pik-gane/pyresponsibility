@@ -162,8 +162,9 @@ class PossibilityNode (InnerNode):
         if subs is None:
             subs = {}
         return PossibilityNode(self.name, desc=self.desc, su={
-            v.clone(subs=subs) if self.labels[v] is None 
-            else (self.labels[v], v.clone(subs=subs))
+            v.clone(subs=subs) 
+            if self.labels is None
+            else (self.labels.get(v, ""), v.clone(subs=subs))
             for v in self.successors
         })
 

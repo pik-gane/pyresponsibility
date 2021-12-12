@@ -3,7 +3,7 @@ from responsibility.prfs.aafra import *
 from responsibility.prfs.cooperation_oriented import *
 from responsibility.prfs.domination_based import *
 
-case = "drsc_fig1d"
+case = "public_good_2_of_3"
 
 subs = {}
 if case == "drsc_fig1a":
@@ -33,11 +33,18 @@ if case == "drsc_fig1d":
     T = T.clone(subs=subs)
     T.make_globals(overwrite=True)
     v = v1
-if case == "drsc_fig2b":
+if case == "drsc_fig2bv1":
+    # this case is only assessed correctly by r_stbr!
     from responsibility.problems.drsc_fig2b import T
     T.make_globals()
     v = v1_risk_of_warming
+if case == "drsc_fig2bv4":
+    # this case is only assessed correctly by r_stbr and r_negl.
+    from responsibility.problems.drsc_fig2b import T
+    T.make_globals()
+    v = v4_unknown_warming
 if case == "forward_trust_v1":
+    # this case is assessed wrongly by r_negl.
     from responsibility.problems.forward_trust import T
     T.make_globals()
     v = v1
