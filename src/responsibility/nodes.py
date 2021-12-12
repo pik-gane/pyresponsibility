@@ -72,7 +72,9 @@ class Node (_AbstractObject):
                  (self.name if hasname(self) else "")
                  + ("\n" if hasname(self) and hasattr(self, "player") else "")
                  + (self.player.name if hasattr(self, "player") else ""),
-                 shape=self._c_dotshape)
+                 shape=self._c_dotshape,
+                 penwidth="3.0" if getattr(self, 'highlight', False) else "1.0"
+                 )
         
         
 class InnerNode (Node):
@@ -161,13 +163,14 @@ class PossibilityNode (InnerNode):
         subs to replace information sets and outcomes"""
         if subs is None:
             subs = {}
-        return PossibilityNode(self.name, desc=self.desc, su={
+        subs[self] = clone = PossibilityNode(self.name, desc=self.desc, su={
             v.clone(subs=subs, keep=keep) 
             if self.labels is None
             else (self.labels.get(v, ""), v.clone(subs=subs, keep=keep))
             for v in self.successors
             if keep is None or v in keep
         })
+        return clone
 
     def _to_lines(self, pre1, pre2):
         su = list(self.successors)
@@ -210,8 +213,25 @@ class ProbabilityNode (InnerNode):
 
     pr = probabilities
     
+    _i_labels = None
+    @property
+    def labels(self):
+        """dict of labels keyed by successor Node"""
+        return self._i_labels
+
     def validate(self):
+        if self.labels is None:
+            self._i_labels = {}
         assert isinstance(self.probabilities, dict)
+        # if necessary, extract labels from probabalities dict:
+        pr = {}
+        for node, p in self.probabilities.items():
+            if isinstance(node, tuple):
+                label, node = node
+                self.labels[node] = label
+            assert isinstance(node, Node)
+            pr[node] = p
+        self._i_probabilities = pr
         self._i_successors = set(self.probabilities.keys())
         total_p = 0
         for node, p in self.probabilities.items():
@@ -220,6 +240,10 @@ class ProbabilityNode (InnerNode):
         if isinstance(total_p, sp.Expr):
             total_p = sp.simplify(total_p)
         assert total_p == 1, "sum of probability values must be 1" 
+        assert isinstance(self.labels, dict)
+        for v, l in self.labels.items():
+            assert v in self.successors
+            assert isinstance(l, str)
 
     def clone(self, subs=None, keep=None):
         """Return a deep copy of this Node and all its descendants as an 
@@ -236,11 +260,14 @@ class ProbabilityNode (InnerNode):
                         if s not in subs:
                             # reuse expression since sympy does not know about cloning:
                             subs[s] = s
-        return ProbabilityNode(self.name, desc=self.desc, pr={
-            v.clone(subs=subs, keep=keep): (p/ptotal).subs(subs) if isinstance(p, sp.Expr) else (p/ptotal)
+        pr = {
+            v.clone(subs=subs, keep=keep): sp.simplify((p/ptotal).subs(subs)) if isinstance(p, sp.Expr) else (p/ptotal)
             for v, p in self.probabilities.items()
             if keep is None or v in keep
-        })
+        }
+        labels = {v: "posterior" for v, p in pr.items()} if ptotal != 1 else None
+        subs[self] = clone = ProbabilityNode(self.name, desc=self.desc, pr=pr, labels=labels)
+        return clone
 
     def __repr__(self):
         return Node.__repr__(self) + " ⚄ …"
@@ -255,7 +282,8 @@ class ProbabilityNode (InnerNode):
         Node._add_to_dot(self, dot)
         for v, p in self.probabilities.items():
             v._add_to_dot(dot)
-            dot.edge(self._get_dotname(), v._get_dotname(), label=str(p))
+            dot.edge(self._get_dotname(), v._get_dotname(), 
+                     label=(self.labels[v]+": " if v in self.labels else "") + str(p))
 
 PrN = ProbabilityNode
 """Abbreviation for ProbabilityNode"""
@@ -328,12 +356,13 @@ class DecisionNode (InnerNode):
                 if a not in subs:
                     # clone action:
                     subs[a] = a.clone()
-        return DecisionNode(self.name, desc=self.desc, 
+        subs[self] = clone = DecisionNode(self.name, desc=self.desc, 
                             pl=subs[self.player], ins=subs[self.ins], co={
             subs[a]: v.clone(subs=subs, keep=keep)
             for a, v in self.consequences.items()
             if keep is None or v in keep
         })
+        return clone
 
     def remove(self):
         """called when removed from the tree, performs cleanup"""
@@ -387,7 +416,8 @@ class DecisionNode (InnerNode):
                 with dot.subgraph(name="cluster_" + self.information_set.name,
                                   graph_attr={
                                       "label": self.information_set.name,
-                                      "style": "dashed"
+                                      "style": "dashed",
+                                      "penwidth": "3.0" if getattr(self.information_set, 'highlight', False) else "1.0"
                                   }) as sub:
                     for v in vs:
                         Node._add_to_dot(v, sub)
@@ -428,7 +458,8 @@ class OutcomeNode (LeafNode):
         if self.ou not in subs:
             # clone outcome:
             subs[self.ou] = self.ou.clone() 
-        return OutcomeNode(self.name, desc=self.desc, ou=subs[self.ou])
+        subs[self] = clone = OutcomeNode(self.name, desc=self.desc, ou=subs[self.ou])
+        return clone
 
     def remove(self):
         """called when removed from the tree, performs cleanup"""

@@ -49,7 +49,8 @@ def is_weakly_dominated(action, ins):
 def trust_based_reduced_tree(tree, information_set):
     """Return a clone of the tree where all nodes incompatible with information
     set and all iteratively strongly dominated future actions that are not in 
-    the history of information_set or belong to the information set are removed."""
+    the history of information_set or belong to the information set are removed
+    and past probabilities are updated to posteriors to reflect this."""
     ins = information_set
     assert isinstance(ins, InformationSet)
     T = tree.clone_constrained(name="tbrt_of_" + tree.name + "_for_" + ins.name,
@@ -67,7 +68,10 @@ def trust_based_reduced_tree(tree, information_set):
                             change = True
                             ins2._i_name += "'"
             if change:
-                break        
+                break
+    T.subs[ins].highlight = True
+    for v in T.subs[ins].nodes:
+        v.highlight = True
     return T
     
 tbrt = trust_based_reduced_tree
