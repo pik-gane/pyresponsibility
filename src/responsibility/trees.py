@@ -45,14 +45,15 @@ class Branch (_AbstractObject):
                         if not v.choice_history == hist:
                             assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"       
         
-    def clone(self, name=None, desc=None, subs=None):
+    def clone(self, name=None, desc=None, subs=None, keep=None):
         """Return a deep copy of this branch as an independent Tree with 
         no connections to this tree"""
         if subs is None:
             subs = {}
         return Tree((name if name is not None else "clone_of_" + self.name),
                     desc=(desc if desc is not None else self.desc), 
-                    ro=self.root.clone(subs=subs), subs=subs) 
+                    ro=self.root.clone(subs=subs, keep=keep), 
+                    subs=subs) 
         
     # properties holding dicts of named objects keyed by their name:
     
@@ -721,6 +722,15 @@ class Tree (Branch):
     
     def validate(self):
         assert self.root.predecessor is None
+        
+    def clone_constrained(self, name=None, desc=None, subs=None, information_set=None):
+        """Return a clone that contains only those parts which are
+        consistent with information_set"""
+        keep = set()
+        for v in information_set.nodes:
+            keep.update(v.path)
+            keep.update([*v.branch.get_nodes()])
+        return self.clone(name=name, desc=desc, subs=subs, keep=keep)
         
     def make_globals(self, overwrite=False):
         """In the calling module, make a global variable for each 

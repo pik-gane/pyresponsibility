@@ -3,7 +3,7 @@ from responsibility.prfs.aafra import *
 from responsibility.prfs.cooperation_oriented import *
 from responsibility.prfs.domination_based import *
 
-case = "public_good_2_of_3"
+case = "drsc_fig2bv4"
 
 subs = {}
 if case == "drsc_fig1a":
@@ -82,13 +82,12 @@ for prf in prfs:
     for a in v.actions:
         print(" ", {v2.name: prf(tree=T, group=G, node=v2, action=a) for v2 in v.information_set.nodes}, pl, a)
 
-print("\n"+repr(T))
-
 T2 = tbrt(T, v.ins)
+print("\n"+repr(T))
 print("\n"+repr(T2))
 
-#print(repr(T))
-#T.draw("/tmp/test.pdf", show=True)
+T.draw("/tmp/T.pdf", show=True)
+T2.draw("/tmp/T2.pdf", show=True)
 
 exit()
 

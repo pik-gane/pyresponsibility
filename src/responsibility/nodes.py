@@ -155,17 +155,18 @@ class PossibilityNode (InnerNode):
             assert v in self.successors
             assert isinstance(l, str)
 
-    def clone(self, subs=None):
+    def clone(self, subs=None, keep=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
         if subs is None:
             subs = {}
         return PossibilityNode(self.name, desc=self.desc, su={
-            v.clone(subs=subs) 
+            v.clone(subs=subs, keep=keep) 
             if self.labels is None
-            else (self.labels.get(v, ""), v.clone(subs=subs))
+            else (self.labels.get(v, ""), v.clone(subs=subs, keep=keep))
             for v in self.successors
+            if keep is None or v in keep
         })
 
     def _to_lines(self, pre1, pre2):
@@ -187,7 +188,7 @@ class PossibilityNode (InnerNode):
         for v in self.successors:
             v._add_to_dot(dot)
             dot.edge(self._get_dotname(), v._get_dotname(),
-                     taillabel=self.labels.get(v, ""))
+                     label=self.labels.get(v, ""))
 
 PoN = PossibilityNode
 """Abbreviation for PossibilityNode"""
@@ -220,21 +221,25 @@ class ProbabilityNode (InnerNode):
             total_p = sp.simplify(total_p)
         assert total_p == 1, "sum of probability values must be 1" 
 
-    def clone(self, subs=None):
+    def clone(self, subs=None, keep=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
         if subs is None:
             subs = {}
-        for p in self.probabilities.values():
-            if isinstance(p, sp.Expr):
-                for s in p.free_symbols: 
-                    if s not in subs:
-                        # reuse expression since sympy does not know about cloning:
-                        subs[s] = s
+        ptotal = 0
+        for v, p in self.probabilities.items():
+            if (keep is None or v in keep):
+                ptotal += p
+                if isinstance(p, sp.Expr):
+                    for s in p.free_symbols: 
+                        if s not in subs:
+                            # reuse expression since sympy does not know about cloning:
+                            subs[s] = s
         return ProbabilityNode(self.name, desc=self.desc, pr={
-            v.clone(subs=subs): p.subs(subs) if isinstance(p, sp.Expr) else p
+            v.clone(subs=subs, keep=keep): (p/ptotal).subs(subs) if isinstance(p, sp.Expr) else (p/ptotal)
             for v, p in self.probabilities.items()
+            if keep is None or v in keep
         })
 
     def __repr__(self):
@@ -250,7 +255,7 @@ class ProbabilityNode (InnerNode):
         Node._add_to_dot(self, dot)
         for v, p in self.probabilities.items():
             v._add_to_dot(dot)
-            dot.edge(self._get_dotname(), v._get_dotname(), taillabel=str(p))
+            dot.edge(self._get_dotname(), v._get_dotname(), label=str(p))
 
 PrN = ProbabilityNode
 """Abbreviation for ProbabilityNode"""
@@ -306,7 +311,7 @@ class DecisionNode (InnerNode):
             self._i_information_set = None
             ins.add_node(self)
     
-    def clone(self, subs=None):
+    def clone(self, subs=None, keep=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
@@ -318,14 +323,16 @@ class DecisionNode (InnerNode):
         if self.player not in subs:
             # clone player:
             subs[self.player] = self.player.clone()
-        for a in self.actions:
-            if a not in subs:
-                # clone action:
-                subs[a] = a.clone()
+        for a, v in self.consequences.items():
+            if keep is None or v in keep:
+                if a not in subs:
+                    # clone action:
+                    subs[a] = a.clone()
         return DecisionNode(self.name, desc=self.desc, 
                             pl=subs[self.player], ins=subs[self.ins], co={
-            subs[a]: v.clone(subs=subs)
+            subs[a]: v.clone(subs=subs, keep=keep)
             for a, v in self.consequences.items()
+            if keep is None or v in keep
         })
 
     def remove(self):
@@ -388,7 +395,7 @@ class DecisionNode (InnerNode):
             Node._add_to_dot(self, dot)
         for a, v in self.consequences.items():
             v._add_to_dot(dot)
-            dot.edge(self._get_dotname(), v._get_dotname(), taillabel=a.name)
+            dot.edge(self._get_dotname(), v._get_dotname(), label=a.name)
 
 DeN = DecisionNode
 """Abbreviation for DecisionNode"""
@@ -412,7 +419,7 @@ class OutcomeNode (LeafNode):
         assert isinstance(self.outcome, Outcome)
         self.outcome.add_node(self)
 
-    def clone(self, subs=None):
+    def clone(self, subs=None, keep=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
