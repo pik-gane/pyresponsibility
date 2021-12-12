@@ -1,4 +1,4 @@
-"""Three named_players simultaneously either contribute to a public good or don't.
+"""Three players simultaneously either contribute to a public good or don't.
 They do this repeatedly for several rounds.
 It is only acceptable if at least two contribute per round on average.""" 
 
@@ -22,8 +22,8 @@ enough = Ou("enough", ac=True)
 # compose per-round action combinations:
 rcombs = list(product([0, 1], [0, 1], [0, 1]))
 
-# create named_nodes from end to front:
-named_nodes = {}
+# create nodes from end to front:
+nodes = {}
 
 for r in range(n_rounds, -1, -1):
     # compose action combinations until round r:
@@ -32,14 +32,14 @@ for r in range(n_rounds, -1, -1):
         pre = "".join(str(x) for x in np.array(c).flatten())
         if r == n_rounds:
             # outcome node:
-            named_nodes[c] = OuN("w"+pre, ou=enough if np.sum(c) >= 2 * n_rounds else not_enough)
+            nodes[c] = OuN("w"+pre, ou=enough if np.sum(c) >= 2 * n_rounds else not_enough)
         else:
-            # simultaneous move decision named_nodes:
-            named_nodes[c] = make_simultaneous_move ("v"+pre, named_players=(i, j, k), consequences={
-                (A[ai], A[aj], A[ak]): named_nodes[c + ((ai, aj, ak),)]
+            # simultaneous move decision nodes:
+            nodes[c] = make_simultaneous_move ("v"+pre, players=(i, j, k), consequences={
+                (A[ai], A[aj], A[ak]): nodes[c + ((ai, aj, ak),)]
                 for ai in [0,1] for aj in [0,1] for ak in [0,1]
             })
 
-T = Tree("repeated_public_good_2_of_3", ro=named_nodes[()])
+T = Tree("repeated_public_good_2_of_3", ro=nodes[()])
 
 T.make_globals()

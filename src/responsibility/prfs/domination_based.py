@@ -1,5 +1,4 @@
-"""Backward Responsibility Functions based on the idea of backward elimination
-of Pareto-dominated actions.
+"""Backward Responsibility Functions based on the concept of Pareto-dominated actions.
 """
 
 from ..nodes import * 
