@@ -155,10 +155,12 @@ class PossibilityNode (InnerNode):
             assert v in self.successors
             assert isinstance(l, str)
 
-    def clone(self, subs={}):
+    def clone(self, subs=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
+        if subs is None:
+            subs = {}
         return PossibilityNode(self.name, desc=self.desc, su={
             v.clone(subs=subs) if self.labels[v] is None 
             else (self.labels[v], v.clone(subs=subs))
@@ -217,12 +219,20 @@ class ProbabilityNode (InnerNode):
             total_p = sp.simplify(total_p)
         assert total_p == 1, "sum of probability values must be 1" 
 
-    def clone(self, subs={}):
+    def clone(self, subs=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
+        if subs is None:
+            subs = {}
+        for p in self.probabilities.values():
+            if isinstance(p, sp.Expr):
+                for s in p.free_symbols: 
+                    if s not in subs:
+                        # reuse expression since sympy does not know about cloning:
+                        subs[s] = s
         return ProbabilityNode(self.name, desc=self.desc, pr={
-            v.clone(subs=subs): p
+            v.clone(subs=subs): p.subs(subs) if isinstance(p, sp.Expr) else p
             for v, p in self.probabilities.items()
         })
 
@@ -295,10 +305,12 @@ class DecisionNode (InnerNode):
             self._i_information_set = None
             ins.add_node(self)
     
-    def clone(self, subs={}):
+    def clone(self, subs=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
+        if subs is None:
+            subs = {}
         if self.ins not in subs:
             # make a fresh information set into which cloned nodes will register:
             subs[self.ins] = InformationSet(self.ins.name, desc=self.ins.desc) 
@@ -399,10 +411,12 @@ class OutcomeNode (LeafNode):
         assert isinstance(self.outcome, Outcome)
         self.outcome.add_node(self)
 
-    def clone(self, subs={}):
+    def clone(self, subs=None):
         """Return a deep copy of this Node and all its descendants as an 
         independent clone with no connections to this node's branch. Use
         subs to replace information sets and outcomes"""
+        if subs is None:
+            subs = {}
         if self.ou not in subs:
             # clone outcome:
             subs[self.ou] = self.ou.clone() 
@@ -504,6 +518,7 @@ class InformationSet (_AbstractObject):
         assert len(self.actions) > 1, "cannot remove the only action"
         self._a_actions.remove(a)
         for v1 in self.nodes:
+            v1.successors.remove(v1.consequences[a])
             v1.consequences[a].remove()
             del v1.consequences[a]
 

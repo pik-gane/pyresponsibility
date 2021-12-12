@@ -43,19 +43,16 @@ class Branch (_AbstractObject):
                     hist = ins.nodes[0].choice_history
                     for v in ins.nodes[1:]:
                         if not v.choice_history == hist:
-                            print("nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history:")
-                            print(hist)
-                            print(v.choice_history)    
-                            print(ins.nodes[0].information_set)
-                            print(v.information_set)                
                             assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"       
         
-    def clone(self, name=None, desc=None):
+    def clone(self, name=None, desc=None, subs=None):
         """Return a deep copy of this branch as an independent Tree with 
         no connections to this tree"""
+        if subs is None:
+            subs = {}
         return Tree((name if name is not None else "clone_of_" + self.name),
                     desc=(desc if desc is not None else self.desc), 
-                    ro=self.root.clone()) 
+                    ro=self.root.clone(subs=subs), subs=subs) 
         
     # properties holding dicts of named objects keyed by their name:
     
@@ -166,6 +163,21 @@ class Branch (_AbstractObject):
                 for a in v.actions}
         return self._a_named_actions
 
+    _a_named_symbols = None
+    @property    
+    def named_symbols(self):
+        """dict of all symbols occurring in probabilities"""
+        if self._a_named_symbols is None:
+            self._a_named_symbols = {}
+            for v in self.get_probability_nodes():
+                for p in v.probabilities.values():
+                    if isinstance(p, sp.Expr):
+                        self._a_named_symbols.update({
+                            s.name: s 
+                            for s in p.free_symbols
+                        }) 
+        return self._a_named_symbols
+
     _a_players = None
     @property    
     def players(self):
@@ -245,8 +257,12 @@ class Branch (_AbstractObject):
     #@profile
     def _get_transitions(self, node=None, include_types=None, exclude_types=None, 
                          include_group=None, exclude_group=None, consistently=None,
-                         fixed_transitions={}, exclude_nodes=[]):
+                         fixed_transitions=None, exclude_nodes=None):
         """helper function"""
+        if fixed_transitions is None:
+            fixed_transitions = {}
+        if exclude_nodes is None:
+            exclude_nodes = []
         if isinstance(node, nd.InnerNode):
             if (node not in exclude_nodes
                 and
@@ -345,18 +361,19 @@ class Branch (_AbstractObject):
                 include_group=include_group, exclude_group=exclude_group, consistently=consistently):
             yield PartialSolution("_", transitions=transitions)
         
-    def get_scenarios(self, node=None, player=None, group=None, fixed_transitions={}):
+    def get_scenarios(self, node=None, player=None, group=None, fixed_transitions=None):
         """Return all scenarios for the given player or group starting at some 
         node, potentially restricted to the optional dict of fixed_transitions.
         @return: generator for Scenario objects   
         """
+        if fixed_transitions is None:
+            fixed_transitions = {}
         group = _get_group(player=player, group=group)
         assert group is not None
         if isinstance(node, nd.DecisionNode) and node.player in group:
             # yield from concatenation of scenarios of all nodes in same information set:
             nodes = node.information_set.nodes
         else:
-            print(node, node.player, group)
             nodes = {node}
         for v in nodes: 
             for transitions in self._get_transitions(
@@ -365,8 +382,10 @@ class Branch (_AbstractObject):
                 yield Scenario("_", current_node=v, transitions=transitions)
     
     #@profile
-    def _get_choices(self, node=None, group=None, fixed_choices={}):
+    def _get_choices(self, node=None, group=None, fixed_choices=None):
         """helper method"""
+        if fixed_choices is None:
+            fixed_choices = {}
         if isinstance(node, nd.DecisionNode) and node.player in group:
             # yield from concatenation of partial strategies at all successors,
             # each one enriched by the corresponding choice:
@@ -399,12 +418,14 @@ class Branch (_AbstractObject):
         elif isinstance(node, nd.LeafNode):
             yield {}
         
-    def get_strategies(self, node=None, player=None, group=None, fixed_choices={}):
+    def get_strategies(self, node=None, player=None, group=None, fixed_choices=None):
         """Return all strategies for the given player or group starting at a 
         certain node, potentially restricted to matching the optionally specified
         dict of fixed_choices. 
         @return: generator for Strategy objects   
         """
+        if fixed_choices is None:
+            fixed_choices = {}
         assert isinstance(node, nd.Node)
         group = _get_group(player=player, group=group)
         assert group is not None
@@ -414,7 +435,7 @@ class Branch (_AbstractObject):
             combinations = itertools.chain(*(itertools.product(*(
                     self._get_choices(node=v, group=group, fixed_choices={**fixed_choices, ins: a})
                     for v in ins.nodes))
-                for a in ins.actions))
+                for a in ([fixed_choices[ins]] if ins in fixed_choices else ins.actions)))
         else:
             combinations = itertools.product(self._get_choices(node=v, group=group, fixed_choices=fixed_choices))
         for combination in combinations:
@@ -622,23 +643,28 @@ class Branch (_AbstractObject):
         return Min([self.rho(group=group, node=node, action=action)
                     for action in node.actions])
                     
-    def cooperatively_achievable_likelihood(self, node=None, env_scenario=None, fixed_choices={}):
+    def cooperatively_achievable_likelihood(self, node=None, env_scenario=None, fixed_choices=None):
         """Achievable likelihood of unacceptable outcome under a certain env_scenario
         for all possibility nodes, minimized over all joint strategies of the whole 
         player set that respect the optionally given fixed_choices.
         """
+        if fixed_choices is None:
+            fixed_choices = {}
         assert isinstance(env_scenario, Scenario)
         all = Group("all", players=self.players)
-        return Min([
+        res = Min([
             self.get_likelihood(node=node, scenario=env_scenario, strategy=strategy, resolve=Max)
             for strategy in self.get_strategies(node=node, group=all, fixed_choices=fixed_choices)
         ])
+        return res
 
-    def cooperatively_achievable_worst_case_likelihood(self, node=None, fixed_choices={}):
+    def cooperatively_achievable_worst_case_likelihood(self, node=None, fixed_choices=None):
         """Minimum of worst-case likelihood of unacceptable outcome,
         minimized over all joint strategies of the whole player set that respect
         the optionally given fixed_choices.
         """
+        if fixed_choices is None: 
+            fixed_choices = {}
         all = Group("all", players=self.players)
         return Min([
             self.get_likelihood(node=node, group=all, strategy=strategy, resolve=Max)
@@ -685,10 +711,18 @@ class Branch (_AbstractObject):
 class Tree (Branch):
     """Represents the whole tree (=the branch starting at the tree's root node)"""
     
+    _i_substitutions = None
+    @property
+    def substitutions(self):
+        """Dict of substitutions made when producing this tree."""
+        return self._i_substitutions
+        
+    subs = substitutions
+    
     def validate(self):
         assert self.root.predecessor is None
         
-    def make_globals(self):
+    def make_globals(self, overwrite=False):
         """In the calling module, make a global variable for each 
         player, action, outcome, node, or information set 
         whose name begins with a letter, unless the global variable already exists."""
@@ -698,9 +732,10 @@ class Tree (Branch):
                      **self.named_information_sets, 
                      **self.named_players, 
                      **self.named_actions, 
-                     **self.named_outcomes}.items():
+                     **self.named_outcomes,
+                     **self.named_symbols}.items():
             if hasname(v):
-                if getattr(module, n, v) != v:
+                if getattr(module, n, v) != v and not overwrite:
                     print("Warning: global var", n, "existed, did not overwrite it.")
                 else:
                     setattr(module, n, v)

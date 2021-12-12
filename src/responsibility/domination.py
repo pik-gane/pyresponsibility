@@ -6,7 +6,8 @@ def strictly_dominates(a1, a2, ins):
     """Whether action 1 strictly dominates action 2 in information_set"""
     T = ins.nodes[0].tree
     for v in ins.nodes:
-        for tau in T._get_transitions(node=v, exclude_types=(), exclude_group=[], exclude_nodes=[v]):
+        for tau in T._get_transitions(node=v, exclude_types=(ProbabilityNode,), 
+                                      exclude_group=[], exclude_nodes=[v]):
             l1 = T._get_expectation(node=v, transitions={**tau, ins: a1}, resolve=Max)
             l2 = T._get_expectation(node=v, transitions={**tau, ins: a2}, resolve=Max)
             assert l1 <= l2 or l1 > l2
@@ -27,7 +28,8 @@ def weakly_dominates(a1, a2, ins):
     found_better = False
     T = ins.nodes[0].tree
     for v in ins.nodes:
-        for tau in T._get_transitions(node=v, exclude_types=[], exclude_group=[], exclude_nodes=[v]):
+        for tau in T._get_transitions(node=v, exclude_types=(ProbabilityNode,), 
+                                      exclude_group=[], exclude_nodes=[v]):
             l1 = T._get_expectation(node=v, transitions={**tau, ins: a1}, resolve=Max)
             l2 = T._get_expectation(node=v, transitions={**tau, ins: a2}, resolve=Max)
             assert l1 <= l2 or l1 > l2
@@ -49,11 +51,9 @@ def trust_based_reduced_tree(tree, information_set):
     actions that are not in the history of information_set or belong to the
     information set are removed."""
     ins = information_set
-    saved_name = ins.name
-    ins._i_name = "anchor___"
     assert isinstance(ins, InformationSet)
-    T = tree.clone(name="tbrt_of_" + tree.name + "_for_" + saved_name)
-    anchor = T.named_information_sets[ins.name]
+    T = tree.clone(name="tbrt_of_" + tree.name + "_for_" + ins.name)
+    anchor = T.subs[ins]
     change = True
     while change:
         change = False
@@ -67,7 +67,6 @@ def trust_based_reduced_tree(tree, information_set):
                             ins2._i_name += "'"
             if change:
                 break        
-    ins._i_name = anchor._i_name = saved_name
     return T
     
 tbrt = trust_based_reduced_tree

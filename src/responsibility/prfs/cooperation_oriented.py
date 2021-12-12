@@ -9,9 +9,11 @@ r_coop = PRF(
     function=(
         lambda T, unused_G, v, a:
             Max([
-                T.cooperatively_achievable_likelihood(node=v, env_scenario=eps,
-                                                      fixed_choices={v.information_set: a}) 
-                - T.cooperatively_achievable_likelihood(node=v, env_scenario=eps)
+                T.cooperatively_achievable_likelihood(
+                    node=v, env_scenario=eps,
+                    fixed_choices={v.information_set: a}) 
+                - T.cooperatively_achievable_likelihood(
+                    node=v, env_scenario=eps)
                 for eps in T.get_scenarios(node=v, group=T.players)
             ])
     ))

@@ -22,6 +22,7 @@ abbreviations = {
     "pr": "probabilities",
     "ro": "root",
     "su": "successors",
+    "subs": "substitutions",
     "ou": "outcome",
     "tr": "transitions",
     }

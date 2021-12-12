@@ -3,8 +3,9 @@ from responsibility.prfs.aafra import *
 from responsibility.prfs.cooperation_oriented import *
 from responsibility.prfs.domination_based import *
 
-case = "drsc_fig1a"
+case = "drsc_fig1d"
 
+subs = {}
 if case == "drsc_fig1a":
     from responsibility.problems.drsc_fig1a import T
     T.make_globals()
@@ -21,10 +22,16 @@ if case == "drsc_fig1bj":
 if case == "drsc_fig1c":
     from responsibility.problems.drsc_fig1c import T
     T.make_globals()
+    subs = {p: 0.8, q: 0.5}
+    T = T.clone(subs=subs)
+    T.make_globals(overwrite=True)
     v = v1
 if case == "drsc_fig1d":
     from responsibility.problems.drsc_fig1d import T
     T.make_globals()
+    subs = {p: 0.8}
+    T = T.clone(subs=subs)
+    T.make_globals(overwrite=True)
     v = v1
 if case == "drsc_fig2b":
     from responsibility.problems.drsc_fig2b import T
@@ -61,7 +68,7 @@ if case == "public_good_2_of_3":
 pl = v.player
 G = Group("", players={pl})
 
-prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop]
+prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop, r_stbr]
 
 for prf in prfs:
     print(prf.name, ":")
