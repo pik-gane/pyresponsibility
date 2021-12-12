@@ -2,10 +2,31 @@ from responsibility import *
 from responsibility.prfs.aafra import *
 from responsibility.prfs.cooperation_oriented import *
 from responsibility.prfs.domination_based import *
+from responsibility.frfs import frf_from_max_prf
 
-case = "drsc_fig2b_prob_v3"
+case = "drsc_fig2b_prob_v1"
+
+prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop, r_stbr]
 
 subs = {}
+if case == "random":
+    T = random_tree(n_players=3, n_leafs=50)
+    T.make_globals()
+    v = [*T.get_decision_nodes([*T.players][0])][0]
+if case == "random_mc":
+    sums = {prf.name: 0 for prf in prfs}
+    nits = 100
+    for it in range(nits):
+        T = random_tree(n_players=3, n_leafs=50)
+        pl = [*T.players][0]
+        G = Group("", players={pl})
+        v = [*T.get_decision_nodes(pl)][0]        
+        a = [*v.actions][0]
+        for prf in prfs:
+            sums[prf.name] += prf(tree=T, group=G, node=v, action=a)
+    for prf in prfs:
+        print(prf, sums[prf.name]/nits)
+    exit()
 if case == "drsc_fig1a":
     from responsibility.problems.drsc_fig1a import T
     T.make_globals()
@@ -53,6 +74,13 @@ if case == "drsc_fig2b_prob_v3":
     from responsibility.problems.drsc_fig2b_prob import T
     T.make_globals()
     v = v3_known_warming
+if case == "qrpc_fig3":
+    from responsibility.problems.qrpc_fig3 import T
+    T.make_globals()
+    subs = {p: 0.5}
+    T = T.clone(subs=subs)
+    T.make_globals(overwrite=True)
+    v = root
 if case == "forward_trust_v1":
     # this case is assessed wrongly by r_negl.
     from responsibility.problems.forward_trust import T
@@ -66,6 +94,10 @@ if case == "public_good_2_of_3":
     from responsibility.problems.public_good_2_of_3 import T
     T.make_globals()
     v = v1_contribute_contribute
+if case == "coordination":
+    from responsibility.problems.coordination import T
+    T.make_globals()
+    v = v1
        
 #from responsibility.problems.drsc_fig1c import T
 #from responsibility.problems.drsc_fig1d import T
@@ -80,25 +112,25 @@ if case == "public_good_2_of_3":
 #from responsibility.problems.threshold_public_good import *
 #T = threshold_public_good(4, 2)
 
-#T = random_tree(1, 100, total_recall=True)
 
 pl = v.player
 G = Group("", players={pl})
 
-prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop, r_stbr]
-
-for prf in prfs:
-    print(prf.name, ":")
-    for a in v.actions:
-        print(" ", {v2.name: prf(tree=T, group=G, node=v2, action=a) for v2 in v.information_set.nodes}, pl, a)
-
 T2 = tbrt(T, v.ins)
 print("\n"+repr(T))
-print("\n"+repr(T2))
+#print("\n"+repr(T2))
 
 T.draw("/tmp/T.pdf", show=True)
 T2.draw("/tmp/T2.pdf", show=True)
 
+
+for prf in prfs:
+    frf = frf_from_max_prf("", prf=prf)
+    print(prf.name, ":")
+    for a in v.actions:
+        print(" ", {v2.name: prf(tree=T, group=G, node=v2, action=a) for v2 in v.information_set.nodes}, pl, a)
+    print(" ", {v2.name: frf(tree=T, group=G, node=v2) for v2 in v.information_set.nodes}, pl, "FRF")
+    
 exit()
 
 

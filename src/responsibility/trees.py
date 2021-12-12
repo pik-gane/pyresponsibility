@@ -43,7 +43,14 @@ class Branch (_AbstractObject):
                     hist = ins.nodes[0].choice_history
                     for v in ins.nodes[1:]:
                         if not v.choice_history == hist:
-                            assert v.choice_history == hist, "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"       
+                            if v.choice_history != hist:
+                                print(
+#                            assert v.choice_history == hist, 
+                                "nodes " + str(ins.nodes[0]) + " and " + str(v) + " have a different choice history!"
+                                )
+                                print(v.choice_history, hist)
+                                print(repr(self))
+                                print()
         
     def clone(self, name=None, desc=None, subs=None, keep=None):
         """Return a deep copy of this branch as an independent Tree with 
@@ -500,38 +507,27 @@ class Branch (_AbstractObject):
                 distribution[ou] = sp.simplify(p)
         return distribution
 
-    _d_expectation = {}
     def _get_expectation(self, node=None, transitions=None, attribute=None, resolve=None):
         """helper method"""
         if isinstance(node, nd.OutcomeNode):
             return ((0 if node.outcome.is_acceptable else 1) if attribute is None 
                     else getattr(node.outcome, attribute, 0))
-        elif not isinstance(node, nd.ProbabilityNode):
-            new_transitions = transitions.copy()
+        elif isinstance(node, nd.ProbabilityNode):
+            expectation = 0
+            for successor, p1 in node.probabilities.items():
+                expectation += p1 * self._get_expectation(successor, transitions, attribute, resolve)
+            return expectation
+        else:
             if node in transitions:
-                successor = new_transitions.pop(node) 
-                return self._get_expectation(successor, new_transitions, attribute, resolve)
+                successor = transitions[node]
+                return self._get_expectation(successor, transitions, attribute, resolve)
             elif isinstance(node, nd.DecisionNode):
                 ins = node.information_set
                 if ins in transitions:
-                    successor = node.consequences[new_transitions.pop(ins)]
-                    return self._get_expectation(successor, new_transitions, attribute, resolve)
-                else:
-                    return resolve([self._get_expectation(successor, new_transitions, attribute, resolve)
-                                    for successor in node.successors])
-        else:
-            key = (node, frozenset(transitions.items()), attribute, resolve)
-            try:
-                expectation = self._d_expectation[key]
-                self._n_used_cache += 1
-                return expectation
-            except:
-                self._n_not_used_cache += 1
-                expectation = 0
-                for successor, p1 in node.probabilities.items():
-                    expectation += p1 * self._get_expectation(successor, transitions, attribute, resolve)
-                self._d_expectation[key] = expectation
-                return expectation
+                    successor = node.consequences[transitions[ins]]
+                    return self._get_expectation(successor, transitions, attribute, resolve)
+        return resolve([self._get_expectation(successor, transitions, attribute, resolve)
+                        for successor in node.successors])
     
     def get_expectation(self, node=None, scenario=None, player=None, group=None,
                         strategy=None, attribute=None, resolve=None):
@@ -722,6 +718,7 @@ class Tree (Branch):
     
     def validate(self):
         assert self.root.predecessor is None
+        # TODO: make sure all node names and ins names are distinct!
         
     def clone_constrained(self, name=None, desc=None, subs=None, information_set=None):
         """Return a clone that contains only those parts which are

@@ -5,7 +5,7 @@ from .functions import Function, Fct, AggregationFunction, AggF, ResponsibilityF
 from .nodes import Node, InnerNode, LeafNode, PossibilityNode, PoN, ProbabilityNode, PrN, DecisionNode, DeN, OutcomeNode, OuN, InformationSet, InS, information_sets, inss, global_information_sets, global_inss
 from .outcomes import Outcome, Ou, outcomes, global_outcomes
 from .players import Player, Pl, Group, Gr, players, global_players
-#from .random import *
+from .random import *
 from .simultaneous import make_simultaneous_move
 from .solutions import PartialSolution, Scenario, Scen, Strategy, Strat
 from .trees import Branch, Tree
