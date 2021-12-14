@@ -64,6 +64,7 @@ def trust_based_reduced_tree(tree, information_set):
                 for a in [*ins2.actions]:
                     if not (ins2, a) in anchor.choice_history:
                         if is_strictly_dominated(a, ins2):
+                            print("removing", a)
                             ins2.remove_action(a)
                             change = True
                             ins2._i_name += "'"

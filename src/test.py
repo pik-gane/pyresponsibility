@@ -4,13 +4,14 @@ from responsibility.prfs.cooperation_oriented import *
 from responsibility.prfs.domination_based import *
 from responsibility.frfs import frf_from_max_prf
 
-case = "drsc_fig2b_prob_v1"
+case = "split_decision_step1"
+#case = "drsc_fig2b_prob_v1"
 
 prfs = [r_like, r_like_KSym, r_risk, r_negl, r_coop, r_stbr]
 
 subs = {}
 if case == "random":
-    T = random_tree(n_players=3, n_leafs=50)
+    T = random_tree(n_players=3, n_leafs=20)
     T.make_globals()
     v = [*T.get_decision_nodes([*T.players][0])][0]
 if case == "random_mc":
@@ -27,6 +28,18 @@ if case == "random_mc":
     for prf in prfs:
         print(prf, sums[prf.name]/nits)
     exit()
+if case == "split_decision_step1":
+    from responsibility.problems.split_decision import T
+    T.make_globals()
+    v = step1
+if case == "split_decision_step2":
+    from responsibility.problems.split_decision import T
+    T.make_globals()
+    v = step2
+if case == "split_decision_unsplit":
+    from responsibility.problems.split_decision import T
+    T.make_globals()
+    v = unsplit
 if case == "drsc_fig1a":
     from responsibility.problems.drsc_fig1a import T
     T.make_globals()
