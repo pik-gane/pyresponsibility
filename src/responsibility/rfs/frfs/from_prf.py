@@ -1,5 +1,5 @@
-from ..core import Max, Min
-from ..functions import FRF, PRF
+from ...core import Max, Min
+from ...functions import FRF, PRF
 
 def frf_from_max_prf(name, desc=None, prf=None):
     """Constructs an FRF from a PRF by taking the maximum over all actions' 

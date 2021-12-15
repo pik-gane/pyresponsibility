@@ -1,8 +1,8 @@
 from responsibility import *
-from responsibility.prfs.aafra import *
-from responsibility.prfs.cooperation_oriented import *
-from responsibility.prfs.domination_based import *
-from responsibility.frfs import frf_from_max_prf
+from responsibility.rfs.prfs.aafra import *
+from responsibility.rfs.prfs.cooperation_oriented import *
+from responsibility.rfs.prfs.domination_based import *
+from responsibility.rfs.frfs import frf_from_max_prf
 
 case = "split_decision_step1"
 #case = "drsc_fig2b_prob_v1"

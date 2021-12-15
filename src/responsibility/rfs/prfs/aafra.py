@@ -4,7 +4,7 @@ Reference:
 [AAFRA] Hiller, S., Israel, J., & Heitzig, J. (2021). An Axiomatic Approach to Formalized Responsibility Ascription.
 """
 
-from ..functions import *
+from ...functions import *
 
 r_like = PRF(
     "r_like", 

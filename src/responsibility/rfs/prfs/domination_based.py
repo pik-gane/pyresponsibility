@@ -1,9 +1,9 @@
 """Backward Responsibility Functions based on the concept of Pareto-dominated actions.
 """
 
-from ..nodes import * 
-from ..functions import *
-from ..domination import *
+from ...nodes import * 
+from ...functions import *
+from ...domination import *
 
 def domination_strength(T, a1, a2, ins):
     """If action 1 weakly dominates action 2, return the "strength" of this

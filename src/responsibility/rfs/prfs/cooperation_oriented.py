@@ -1,7 +1,7 @@
 """Backward Responsibility Functions based on the idea of cooperation.
 """
 
-from ..functions import *
+from ...functions import *
 
 r_coop = PRF(
     "r_coop",
